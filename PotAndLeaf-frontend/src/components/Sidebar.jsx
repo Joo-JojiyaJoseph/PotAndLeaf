@@ -1,0 +1,172 @@
+import { NavLink } from 'react-router-dom';
+import {
+  ArrowsRightLeftIcon,
+  ArrowUturnLeftIcon,
+  ClipboardDocumentCheckIcon,
+  BeakerIcon,
+  CalculatorIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  CubeIcon,
+  GiftIcon,
+  HomeIcon,
+  ShieldCheckIcon,
+  ShoppingCartIcon,
+  SparklesIcon,
+  TagIcon,
+  TruckIcon,
+  UserGroupIcon,
+  UsersIcon,
+} from '@heroicons/react/24/outline';
+import { useAuth } from '../context/AuthContext';
+import { classNames } from '../lib/format';
+
+const GROUPS = [
+  {
+    label: 'Main',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', to: '/', icon: HomeIcon, end: true },
+      { key: 'purchase', label: 'Purchase', to: '/purchases', icon: ShoppingCartIcon },
+      { key: 'inventory', label: 'Inventory', to: '/inventory', icon: CubeIcon },
+      { key: 'purchase-returns', label: 'Purch. Returns', to: '/purchase-returns', icon: ArrowUturnLeftIcon },
+      { key: 'stock-verifications', label: 'Stock Count', to: '/stock-verifications', icon: ClipboardDocumentCheckIcon },
+      { key: 'transfers', label: 'Transfers', icon: ArrowsRightLeftIcon, soon: true },
+      { key: 'production', label: 'Production', icon: BeakerIcon, soon: true },
+    ],
+  },
+  {
+    label: 'Commerce',
+    items: [
+      { key: 'pos', label: 'POS Sales', icon: CalculatorIcon, soon: true },
+      { key: 'rental', label: 'Plant Rental', icon: GiftIcon, soon: true },
+      { key: 'customers', label: 'Customers', icon: UsersIcon, soon: true },
+      { key: 'loyalty', label: 'Loyalty', icon: SparklesIcon, soon: true },
+    ],
+  },
+  {
+    label: 'Setup',
+    items: [
+      { key: 'suppliers', label: 'Suppliers', to: '/suppliers', icon: TruckIcon },
+      { key: 'products', label: 'Products', to: '/products', icon: TagIcon },
+      { key: 'roles', label: 'Roles', icon: ShieldCheckIcon, soon: true },
+      { key: 'users', label: 'Users', icon: UserGroupIcon, soon: true },
+      { key: 'reports', label: 'Reports', icon: ChartBarIcon, soon: true },
+      { key: 'settings', label: 'Settings', icon: Cog6ToothIcon, soon: true },
+    ],
+  },
+];
+
+function PotLeafMark() {
+  return (
+    <svg viewBox="0 0 32 32" className="size-7" aria-hidden>
+      {/* leaf */}
+      <path d="M16 4c5 2 8 6 8 10-4 1-7-1-8-4-1 3-4 5-8 4 0-4 3-8 8-10z" fill="var(--color-leaf)" />
+      {/* pot */}
+      <path d="M9 19h14l-1.6 7.2a2 2 0 0 1-2 1.6h-6.8a2 2 0 0 1-2-1.6L9 19z" fill="var(--color-terracotta)" />
+      <rect x="8" y="17.4" width="16" height="2.2" rx="1.1" fill="var(--color-terracotta)" />
+    </svg>
+  );
+}
+
+function CompanySwitcher() {
+  const { companies, companyId, selectCompany } = useAuth();
+  return (
+    <div className="px-3 pb-3">
+      <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted">
+        Company
+      </label>
+      <select
+        value={companyId ?? ''}
+        onChange={(e) => selectCompany(e.target.value)}
+        className="h-9 w-full rounded-xl border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25"
+      >
+        {companies.length === 0 && <option value="">No companies</option>}
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function Item({ item }) {
+  const Icon = item.icon;
+  const base =
+    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all';
+
+  if (item.soon) {
+    return (
+      <NavLink
+        to={`/soon/${item.key}`}
+        className={({ isActive }) =>
+          classNames(base, isActive ? 'bg-surface text-ink shadow-soft' : 'text-muted hover:bg-surface hover:text-ink')
+        }
+      >
+        <Icon className="size-[18px]" />
+        <span className="flex-1">{item.label}</span>
+        <span className="font-mono text-[9px] uppercase tracking-wide text-muted/70">soon</span>
+      </NavLink>
+    );
+  }
+
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      className={({ isActive }) =>
+        classNames(
+          base,
+          isActive
+            ? 'bg-surface font-medium text-leaf shadow-soft'
+            : 'text-muted hover:bg-surface hover:text-ink',
+        )
+      }
+    >
+      <Icon className="size-[18px]" />
+      {item.label}
+    </NavLink>
+  );
+}
+
+export default function Sidebar({ open, onClose }) {
+  return (
+    <>
+      {open && (
+        <div className="fixed inset-0 z-30 bg-ink/30 lg:hidden" onClick={onClose} aria-hidden />
+      )}
+      <aside
+        className={classNames(
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-line bg-sidebar transition-transform lg:static lg:z-auto lg:translate-x-0',
+          open ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <div className="flex items-center gap-2.5 px-4 py-4">
+          <PotLeafMark />
+          <div className="leading-tight">
+            <div className="text-sm font-semibold">Pot &amp; Leaf</div>
+            <div className="font-mono text-[10px] text-muted">Cheerakuzhy Nurseries</div>
+          </div>
+        </div>
+
+        <CompanySwitcher />
+
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
+          {GROUPS.map((group) => (
+            <div key={group.label}>
+              <div className="mb-1.5 px-3 font-mono text-[10px] uppercase tracking-wider text-muted/70">
+                {group.label}
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <Item key={item.key} item={item} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </>
+  );
+}

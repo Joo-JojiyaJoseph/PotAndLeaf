@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* Design tokens — Pot & Leaf "modern" theme: cool green-grey canvas, soft
+   sage-green accent, white cards floating on soft shadows, generous radii.
+   Token names are kept stable so existing screens adopt the new look. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #EEF3F1;      /* app background            */
+  --color-sidebar: #F5F8F7;    /* sidebar tint              */
+  --color-surface: #FFFFFF;    /* cards / inputs            */
+  --color-ink: #2F3B35;        /* primary text              */
+  --color-muted: #68766E;      /* secondary text            */
+  --color-faint: #98A7A0;      /* micro-labels              */
+  --color-line: #E3EBE7;       /* borders                   */
+  --color-line-strong: #C9D7D1;
+
+  --color-leaf: #5E9B6B;       /* accent                    */
+  --color-leaf-hover: #487B55; /* accent dark               */
+  --color-leaf-light: #7CB489; /* accent light              */
+  --color-leaf-soft: #DCEEDF;  /* accent pale               */
+
+  --color-terracotta: #C58A5B; /* warm secondary (logo pot) */
+  --color-terracotta-soft: #F3E9DF;
+
+  --color-amber: #B4801E;      /* warn text (on pale)       */
+  --color-amber-soft: #FFF7E4;
+  --color-danger: #B54A3A;
+  --color-danger-soft: #F6E5E1;
+  --color-info: #3E7CB1;
+  --color-info-soft: #E4EFF7;
+
+  --radius-xl: 18px;
+
+  --shadow-soft: 0 6px 18px rgba(35,45,40,0.06);
+  --shadow-card: 0 8px 25px rgba(35,45,40,0.06);
+  --shadow-pop: 0 12px 34px rgba(35,45,40,0.12);
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+/* Tabular figures for codes, amounts and metrics (Inter supports them). */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+/* Mono-style micro label used across the theme (uppercase, tracked). */
+.microlabel { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; }
+::selection { background: var(--color-leaf-soft); }

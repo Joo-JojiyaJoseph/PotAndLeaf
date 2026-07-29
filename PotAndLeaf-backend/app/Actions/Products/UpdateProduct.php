@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Actions\Products;
+
+use App\Models\Product;
+use App\Repositories\Contracts\ProductRepositoryInterface;
+use Illuminate\Support\Facades\DB;
+
+class UpdateProduct
+{
+    public function __construct(private readonly ProductRepositoryInterface $products) {}
+
+    /** @param array<string,mixed> $data */
+    public function handle(Product $product, array $data): Product
+    {
+        return DB::transaction(function () use ($product, $data) {
+            $suppliers = $this->pullSuppliers($data);
+
+            // Stock is moved by inventory transactions, never edited directly,
+            // so opening_stock changes don't touch current_stock here.
+            $updated = $this->products->update($product, $data);
+            $updated->suppliers()->sync($suppliers);
+
+            return $updated->load('suppliers');
+        });
+    }
+
+    private function pullSuppliers(array &$data): array
+    {
+        $rows = $data['suppliers'] ?? [];
+        unset($data['suppliers']);
+
+        return collect($rows)
+            ->filter(fn ($r) => filled($r['supplier_id'] ?? null))
+            ->mapWithKeys(fn ($r) => [
+                $r['supplier_id'] => [
+                    'supplier_price' => $r['supplier_price'] ?? 0,
+                    'is_primary'     => (bool) ($r['is_primary'] ?? false),
+                ],
+            ])->all();
+    }
+}

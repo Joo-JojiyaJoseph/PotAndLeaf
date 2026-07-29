@@ -1,0 +1,21 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->call([
+            PermissionSeeder::class,   // global permission catalog (incl. "*")
+            CompanySeeder::class,      // the nursery companies (tenancy)
+            UserSeeder::class,         // admin user + company access
+            AdminRoleSeeder::class,    // Administrator role per company, assigned to admin
+            LookupSeeder::class,       // categories / brands / units per company
+            SupplierSeeder::class,     // sample suppliers per company
+            ProductSeeder::class,      // sample products per company
+        ]);
+    }
+}
