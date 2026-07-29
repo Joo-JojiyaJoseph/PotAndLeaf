@@ -27,7 +27,10 @@ class ResolveApiCompany
 
         $company = Company::find($companyId);
 
-        if (! $company || ! $request->user()->companies()->whereKey($company->id)->exists()) {
+        $isMember = $request->user()->is_super_admin
+            || $request->user()->companies()->whereKey($company?->id)->exists();
+
+        if (! $company || ! $isMember) {
             return response()->json(['message' => 'You do not have access to this company.'], 403);
         }
 

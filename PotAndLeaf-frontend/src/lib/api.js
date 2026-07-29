@@ -19,7 +19,7 @@ export function getAuthToken() { return authToken; }
 export function getCompanyId() { return companyId; }
 
 const api = axios.create({
-  baseURL: 'http://potandleaf-backend.test/api',
+  baseURL: '/api',
   headers: { Accept: 'application/json' },
 });
 

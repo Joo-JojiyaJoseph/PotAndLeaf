@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,      // the nursery companies (tenancy)
             UserSeeder::class,         // admin user + company access
             AdminRoleSeeder::class,    // Administrator role per company, assigned to admin
+            StandardRolesSeeder::class, // branch roles: Manager, Cashier, Godown, Supervisor, Salesman
+            BranchUserSeeder::class,    // sample per-company logins (manager/cashier)
             LookupSeeder::class,       // categories / brands / units per company
             SupplierSeeder::class,     // sample suppliers per company
             ProductSeeder::class,      // sample products per company

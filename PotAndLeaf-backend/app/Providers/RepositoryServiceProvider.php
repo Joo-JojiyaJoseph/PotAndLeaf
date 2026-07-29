@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Repositories\Contracts\BulkSplitRepositoryInterface;
 use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Contracts\PurchaseRepositoryInterface;
 use App\Repositories\Contracts\PurchaseReturnRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\StockVerificationRepositoryInterface;
 use App\Repositories\Contracts\SupplierRepositoryInterface;
+use App\Repositories\Eloquent\BulkSplitRepository;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Repositories\Eloquent\PurchaseRepository;
 use App\Repositories\Eloquent\PurchaseReturnRepository;
@@ -27,6 +29,7 @@ class RepositoryServiceProvider extends ServiceProvider
     public array $bindings = [
         SupplierRepositoryInterface::class => SupplierRepository::class,
         ProductRepositoryInterface::class  => ProductRepository::class,
+        BulkSplitRepositoryInterface::class => BulkSplitRepository::class,
         PurchaseRepositoryInterface::class => PurchaseRepository::class,
         PurchaseReturnRepositoryInterface::class => PurchaseReturnRepository::class,
         StockVerificationRepositoryInterface::class => StockVerificationRepository::class,

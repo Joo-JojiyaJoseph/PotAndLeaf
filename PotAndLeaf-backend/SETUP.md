@@ -163,3 +163,60 @@ curl -s http://potandleaf-backend.test/api/login -H 'Accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@potandleaf.test","password":"password"}'   # → { data: { token, ... } }
 ```
+
+---
+
+## What's new: Products/Barcode + Multi-Company & Access Control (Module 14)
+
+**Product Master (SPA).** Full create/edit/delete for products with pricing, tax,
+reorder level, and an **auto-generated Code128 barcode** (printable label; barcode
+search works from the products list).
+
+**Companies (HO super admin).** `admin@potandleaf.test` is now a **super admin** who
+can add / edit / delete companies and manage users in any of them (menu: Companies).
+Every company keeps its own products, suppliers, purchases, inventory, users and
+roles — isolation is enforced by `company_id` on every query.
+
+**Users & roles per company.** Each user is a real login (email + password) attached
+to a company with one role. Roles carry a permission matrix (grouped by module) you
+can edit. Deactivated users can't sign in. Seeded roles per company: Administrator
+(full), Manager, Cashier, Godown Staff, Supervisor, Salesman.
+
+**Inline validation.** Forms now show validation errors **under each field** (company,
+user, role, and product forms), not just a banner.
+
+After pulling this build, re-run `php artisan migrate:fresh --seed` (new columns:
+`users.is_super_admin/phone/is_active`; new permissions for users/roles). Then sign in
+fresh — the stale-token behaviour from the troubleshooting section applies.
+
+### Endpoints added
+`GET/POST/PUT/DELETE /companies` (super admin), `/users` (+ `/users/form-data`),
+`/roles` (+ `/roles/form-data`), and full `/products` CRUD (+ `/products/form-data`).
+
+---
+
+## Modules 1 & 2 completed
+
+**Purchase Management (Module 01)** now also has:
+- **Bulk Splitting** — convert a bulk product (e.g. a 25 kg bag) into sellable units,
+  with the bulk's cost **redistributed by qty × weight** across the outputs (exact to
+  the paisa). Confirming posts stock: source out, outputs in, output cost prices
+  refreshed. Endpoints: `/bulk-splits` (+ `form-data`, `{id}/confirm`, `DELETE`).
+- **CBM / container planning** — product dimensions (L×W×H cm) feed a live **total CBM**
+  and a **container fill %** indicator on the purchase entry form.
+- **Sales-rate suggestion** — on the product form, enter a margin % to auto-fill
+  retail/MRP from cost.
+
+**Inventory Management (Module 04)** now has **Stock Reports** as tabs on the Inventory
+screen: **Valuation** (stock × cost, with totals) and **Fast / Slow / Dead** movement
+classification over a 30/60/90-day window — plus the existing live stock levels,
+reorder alerts, and per-product ledger.
+
+New permissions: `bulk_splits.view/create/confirm/delete`. Re-run
+`php artisan migrate:fresh --seed` (new tables: `bulk_splits`, `bulk_split_items`;
+new product columns `length_cm/width_cm/height_cm`).
+
+### Still deferred to Milestone 3 (correctly, not skipped)
+Per-location **in-transit** and **rental** stock buckets depend on Stock Transfer and
+Plant Rental — those are Module 05/06 and will land with Milestone 3. Purchase-list PDF
+export is a small follow-up.

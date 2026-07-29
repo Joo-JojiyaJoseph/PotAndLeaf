@@ -19,6 +19,7 @@ class Product extends Model
         'category_id', 'brand_id', 'unit_id',
         'gst_rate', 'mrp', 'cost_price', 'dealer_price', 'wholesale_price', 'retail_price',
         'reorder_level', 'opening_stock', 'current_stock',
+        'length_cm', 'width_cm', 'height_cm',
         'images', 'status',
     ];
 
@@ -35,6 +36,9 @@ class Product extends Model
             'reorder_level'   => 'decimal:2',
             'opening_stock'   => 'decimal:2',
             'current_stock'   => 'decimal:2',
+            'length_cm'       => 'decimal:2',
+            'width_cm'        => 'decimal:2',
+            'height_cm'       => 'decimal:2',
         ];
     }
 

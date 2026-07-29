@@ -4,17 +4,25 @@ namespace App\Actions\Products;
 
 use App\Models\Product;
 use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Support\Barcode\BarcodeGenerator;
 use Illuminate\Support\Facades\DB;
 
 class CreateProduct
 {
-    public function __construct(private readonly ProductRepositoryInterface $products) {}
+    public function __construct(
+        private readonly ProductRepositoryInterface $products,
+        private readonly BarcodeGenerator $barcodes,
+    ) {}
 
     /** @param array<string,mixed> $data */
     public function handle(int|string $companyId, array $data): Product
     {
         return DB::transaction(function () use ($companyId, $data) {
             $suppliers = $this->pullSuppliers($data);
+
+            if (empty($data['barcode'])) {
+                $data['barcode'] = $this->barcodes->forProduct($companyId);
+            }
 
             $product = $this->products->create([
                 ...$data,

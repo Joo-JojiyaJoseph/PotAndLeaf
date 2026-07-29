@@ -14,11 +14,11 @@ class ProductSeeder extends Seeder
     public function run(): void
     {
         $catalog = [
-            ['sku' => 'PLT-ROSE',  'name' => 'Rose Plant (Hybrid Tea)', 'cat' => 'PLANT', 'unit' => 'NOS', 'gst' => 5,  'cost' => 45,  'mrp' => 120, 'reorder' => 20],
-            ['sku' => 'PLT-MANGO', 'name' => 'Mango Sapling (Alphonso)', 'cat' => 'PLANT', 'unit' => 'NOS', 'gst' => 5,  'cost' => 90,  'mrp' => 220, 'reorder' => 15],
-            ['sku' => 'POT-CLAY8', 'name' => 'Clay Pot 8 inch',          'cat' => 'POT',   'unit' => 'NOS', 'gst' => 12, 'cost' => 35,  'mrp' => 80,  'reorder' => 50],
-            ['sku' => 'POT-FIBER', 'name' => 'Fiber Planter (Large)',    'cat' => 'POT',   'unit' => 'NOS', 'gst' => 18, 'cost' => 260, 'mrp' => 560, 'reorder' => 10],
-            ['sku' => 'FRT-VERMI', 'name' => 'Vermicompost 5kg',         'cat' => 'FERT',  'unit' => 'BAG', 'gst' => 5,  'cost' => 120, 'mrp' => 200, 'reorder' => 25],
+            ['sku' => 'PLT-ROSE',  'name' => 'Rose Plant (Hybrid Tea)', 'cat' => 'PLANT', 'unit' => 'NOS', 'gst' => 5,  'cost' => 45,  'mrp' => 120, 'reorder' => 20, 'dim' => [15, 15, 40]],
+            ['sku' => 'PLT-MANGO', 'name' => 'Mango Sapling (Alphonso)', 'cat' => 'PLANT', 'unit' => 'NOS', 'gst' => 5,  'cost' => 90,  'mrp' => 220, 'reorder' => 15, 'dim' => [20, 20, 60]],
+            ['sku' => 'POT-CLAY8', 'name' => 'Clay Pot 8 inch',          'cat' => 'POT',   'unit' => 'NOS', 'gst' => 12, 'cost' => 35,  'mrp' => 80,  'reorder' => 50, 'dim' => [20, 20, 18]],
+            ['sku' => 'POT-FIBER', 'name' => 'Fiber Planter (Large)',    'cat' => 'POT',   'unit' => 'NOS', 'gst' => 18, 'cost' => 260, 'mrp' => 560, 'reorder' => 10, 'dim' => [45, 45, 40]],
+            ['sku' => 'FRT-VERMI', 'name' => 'Vermicompost 5kg',         'cat' => 'FERT',  'unit' => 'BAG', 'gst' => 5,  'cost' => 120, 'mrp' => 200, 'reorder' => 25, 'dim' => [40, 25, 12]],
         ];
 
         Company::all()->each(function (Company $company) use ($catalog) {
@@ -39,6 +39,9 @@ class ProductSeeder extends Seeder
                         'mrp'           => $p['mrp'],
                         'retail_price'  => $p['mrp'],
                         'reorder_level' => $p['reorder'],
+                        'length_cm'     => $p['dim'][0] ?? null,
+                        'width_cm'      => $p['dim'][1] ?? null,
+                        'height_cm'     => $p['dim'][2] ?? null,
                         'opening_stock' => 0,
                         'current_stock' => 0, // starts empty so purchases drive stock (and low-stock alerts show)
                         'status'        => 'active',

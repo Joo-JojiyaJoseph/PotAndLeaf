@@ -24,6 +24,11 @@ trait HasRolesAndPermissions
 
     public function hasPermission(string $permission, int|string|null $companyId = null): bool
     {
+        // Super admins (HO) can do everything, in every company.
+        if ($this->is_super_admin) {
+            return true;
+        }
+
         $companyId ??= $this->defaultCompany()?->id;
 
         if ($companyId === null) {

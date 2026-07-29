@@ -6,6 +6,12 @@ import Dashboard from './pages/Dashboard';
 import ComingSoon from './pages/ComingSoon';
 import SuppliersList from './pages/suppliers/SuppliersList';
 import ProductsList from './pages/products/ProductsList';
+import ProductForm from './pages/products/ProductForm';
+import CompaniesList from './pages/companies/CompaniesList';
+import UsersList from './pages/users/UsersList';
+import RolesList from './pages/roles/RolesList';
+import BulkSplitsList from './pages/bulkSplits/BulkSplitsList';
+import BulkSplitForm from './pages/bulkSplits/BulkSplitForm';
 import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import InventoryList from './pages/inventory/InventoryList';
@@ -23,6 +29,8 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="suppliers" element={<SuppliersList />} />
           <Route path="products" element={<ProductsList />} />
+          <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="purchases" element={<PurchasesList />} />
           <Route path="purchases/new" element={<PurchaseForm />} />
           <Route path="purchases/:id/edit" element={<PurchaseForm />} />
@@ -31,6 +39,11 @@ export default function App() {
           <Route path="purchase-returns/new" element={<PurchaseReturnForm />} />
           <Route path="stock-verifications" element={<StockVerificationsList />} />
           <Route path="stock-verifications/new" element={<StockVerificationForm />} />
+          <Route path="companies" element={<CompaniesList />} />
+          <Route path="users" element={<UsersList />} />
+          <Route path="roles" element={<RolesList />} />
+          <Route path="bulk-splits" element={<BulkSplitsList />} />
+          <Route path="bulk-splits/new" element={<BulkSplitForm />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

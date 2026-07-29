@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Card, Field, Input, Spinner } from '../../components/ui';
 import { formatCurrency } from '../../lib/format';
 import { computePurchase } from '../../lib/purchaseCalc';
@@ -11,11 +12,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 const emptyLine = () => ({ product_id: '', qty: '', rate: '', discount: '', gst_rate: '' });
 const numInput =
   'h-9 w-full rounded-[10px] border border-line bg-surface px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-leaf/30';
+const selectCls =
+  'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
 export default function PurchaseForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const { isSuperAdmin, companies, companyId, selectCompany, activeCompany } = useAuth();
 
   const [header, setHeader] = useState({
     supplier_id: '',
@@ -30,10 +34,23 @@ export default function PurchaseForm() {
   const [errors, setErrors] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Suppliers/products are company-scoped — keying by company prevents showing a
+  // previous company's options (which would fail validation on submit).
   const { data: formData, isLoading: loadingForm } = useQuery({
-    queryKey: ['purchase-form-data'],
+    queryKey: ['purchase-form-data', activeCompany?.id],
     queryFn: () => api.get('/purchases/form-data').then((r) => r.data.data),
+    enabled: Boolean(activeCompany),
   });
+
+  // When a super admin switches the company on a new purchase, clear stale picks.
+  useEffect(() => {
+    if (!isEdit) {
+      setHeader((h) => ({ ...h, supplier_id: '' }));
+      setLines([emptyLine()]);
+      setErrors([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompany?.id]);
 
   const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: ['purchase', id],
@@ -138,6 +155,16 @@ export default function PurchaseForm() {
 
   const t = computed.totals;
 
+  // CBM (container planning): Σ L×W×H×qty / 1,000,000 (cm³ → m³)
+  const totalCbm = lines.reduce((sum, l) => {
+    const p = productsById[l.product_id];
+    if (!p) return sum;
+    const vol = (Number(p.length_cm) || 0) * (Number(p.width_cm) || 0) * (Number(p.height_cm) || 0);
+    return sum + (vol * (Number(l.qty) || 0)) / 1_000_000;
+  }, 0);
+  const containerCbm = Number(header.container_cbm) || 0;
+  const fillPct = containerCbm > 0 ? Math.min(100, (totalCbm / containerCbm) * 100) : 0;
+
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div className="flex items-center justify-between">
@@ -162,6 +189,24 @@ export default function PurchaseForm() {
 
       {/* Header */}
       <Card className="p-5">
+        {isSuperAdmin && !isEdit && (
+          <div className="mb-4 rounded-xl bg-leaf-soft/50 p-3">
+            <Field label="Purchasing for company">
+              <select
+                value={companyId ?? ''}
+                onChange={(e) => selectCompany(e.target.value)}
+                className={selectCls}
+              >
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </Field>
+            <p className="mt-1.5 text-xs text-muted">
+              As HO, choose which company this purchase belongs to — suppliers and products update to match.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Supplier" required>
             <select
@@ -316,6 +361,36 @@ export default function PurchaseForm() {
             Landed cost is spread across lines by value to set each item's true unit cost — it
             isn't added to the amount payable to the supplier.
           </p>
+
+          <div className="mt-4 border-t border-line pt-4">
+            <div className="microlabel mb-2 text-faint">CBM / container planning</div>
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <div className="text-xs text-muted">Total CBM</div>
+                <div className="tnum text-lg font-semibold">{totalCbm.toFixed(3)} m³</div>
+              </div>
+              <Field label="Container capacity (m³)">
+                <Input
+                  type="number" step="0.01" value={header.container_cbm ?? ''}
+                  onChange={(e) => setHeader((h) => ({ ...h, container_cbm: e.target.value }))}
+                  placeholder="e.g. 28 (20ft) / 58 (40ft)"
+                />
+              </Field>
+              {containerCbm > 0 && (
+                <div className="min-w-[140px] flex-1">
+                  <div className="mb-1 flex justify-between text-xs text-muted">
+                    <span>Fill</span><span className="tnum">{fillPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-paper">
+                    <div className={'h-full ' + (fillPct > 100 ? 'bg-danger' : 'bg-leaf')} style={{ width: `${Math.min(100, fillPct)}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+            {totalCbm === 0 && (
+              <p className="mt-2 text-xs text-muted">Add product dimensions (L×W×H) in the product master to see CBM.</p>
+            )}
+          </div>
         </Card>
 
         <Card className="p-5">

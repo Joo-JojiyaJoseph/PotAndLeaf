@@ -108,6 +108,7 @@ export function AuthProvider({ children }) {
       companies,
       companyId,
       activeCompany: companies.find((c) => String(c.id) === String(companyId)) ?? null,
+      isSuperAdmin: Boolean(user?.is_super_admin),
       booting,
       login,
       logout,

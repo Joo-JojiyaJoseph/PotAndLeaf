@@ -3,6 +3,7 @@ import {
   ArrowsRightLeftIcon,
   ArrowUturnLeftIcon,
   ClipboardDocumentCheckIcon,
+  ScissorsIcon,
   BeakerIcon,
   CalculatorIcon,
   ChartBarIcon,
@@ -17,6 +18,7 @@ import {
   TruckIcon,
   UserGroupIcon,
   UsersIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { classNames } from '../lib/format';
@@ -30,6 +32,7 @@ const GROUPS = [
       { key: 'inventory', label: 'Inventory', to: '/inventory', icon: CubeIcon },
       { key: 'purchase-returns', label: 'Purch. Returns', to: '/purchase-returns', icon: ArrowUturnLeftIcon },
       { key: 'stock-verifications', label: 'Stock Count', to: '/stock-verifications', icon: ClipboardDocumentCheckIcon },
+      { key: 'bulk-splits', label: 'Bulk Split', to: '/bulk-splits', icon: ScissorsIcon },
       { key: 'transfers', label: 'Transfers', icon: ArrowsRightLeftIcon, soon: true },
       { key: 'production', label: 'Production', icon: BeakerIcon, soon: true },
     ],
@@ -48,8 +51,9 @@ const GROUPS = [
     items: [
       { key: 'suppliers', label: 'Suppliers', to: '/suppliers', icon: TruckIcon },
       { key: 'products', label: 'Products', to: '/products', icon: TagIcon },
-      { key: 'roles', label: 'Roles', icon: ShieldCheckIcon, soon: true },
-      { key: 'users', label: 'Users', icon: UserGroupIcon, soon: true },
+      { key: 'roles', label: 'Roles', to: '/roles', icon: ShieldCheckIcon },
+      { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },
+      { key: 'companies', label: 'Companies', to: '/companies', icon: BuildingOffice2Icon, superAdmin: true },
       { key: 'reports', label: 'Reports', icon: ChartBarIcon, soon: true },
       { key: 'settings', label: 'Settings', icon: Cog6ToothIcon, soon: true },
     ],
@@ -131,6 +135,7 @@ function Item({ item }) {
 }
 
 export default function Sidebar({ open, onClose }) {
+  const { isSuperAdmin } = useAuth();
   return (
     <>
       {open && (
@@ -159,7 +164,7 @@ export default function Sidebar({ open, onClose }) {
                 {group.label}
               </div>
               <div className="space-y-0.5">
-                {group.items.map((item) => (
+                {group.items.filter((item) => !item.superAdmin || isSuperAdmin).map((item) => (
                   <Item key={item.key} item={item} />
                 ))}
               </div>

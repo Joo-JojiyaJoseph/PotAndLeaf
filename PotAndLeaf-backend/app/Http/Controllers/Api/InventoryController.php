@@ -59,6 +59,21 @@ class InventoryController extends Controller
         );
     }
 
+    public function valuation(Request $request): JsonResponse
+    {
+        $company = $this->allow($request);
+
+        return $this->ok($this->inventory->valuation($company->id));
+    }
+
+    public function movement(Request $request): JsonResponse
+    {
+        $company = $this->allow($request);
+        $days = max(1, min((int) $request->query('days', 30), 365));
+
+        return $this->ok($this->inventory->movement($company->id, $days));
+    }
+
     private function allow(Request $request)
     {
         $company = $request->attributes->get('company');

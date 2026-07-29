@@ -34,6 +34,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => 'This account has been deactivated. Contact your administrator.',
+            ]);
+        }
+
         $token = $user->createToken('spa')->plainTextToken;
 
         return $this->ok([
@@ -63,21 +69,38 @@ class AuthController extends Controller
     /** Permission names for the current company, so the SPA can gate its UI. */
     public function permissions(Request $request): JsonResponse
     {
+        $user = $request->user();
+
+        if ($user->is_super_admin) {
+            return $this->ok(['*']);
+        }
+
         $company = $request->attributes->get('company');
 
         return $this->ok(
-            $request->user()->permissionNamesForCompany($company->id)->values()
+            $user->permissionNamesForCompany($company->id)->values()
         );
     }
 
     private function userPayload($user): array
     {
-        return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email];
+        return [
+            'id'             => $user->id,
+            'name'           => $user->name,
+            'email'          => $user->email,
+            'phone'          => $user->phone,
+            'is_super_admin' => (bool) $user->is_super_admin,
+            'is_active'      => (bool) $user->is_active,
+        ];
     }
 
     private function companies($user): array
     {
-        return $user->companies()
+        $query = $user->is_super_admin
+            ? \App\Models\Company::query()->orderBy('name')
+            : $user->companies();
+
+        return $query
             ->get(['companies.id', 'companies.name', 'companies.code'])
             ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'code' => $c->code])
             ->all();

@@ -35,7 +35,13 @@ class PermissionRegistry
                 'purchase_returns.confirm' => 'Confirm purchase returns',
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
-            'Inventory'  => ['inventory.view' => 'View inventory & stock ledger'],
+            'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Bulk Splitting' => [
+                'bulk_splits.view'    => 'View bulk splits',
+                'bulk_splits.create'  => 'Create bulk splits',
+                'bulk_splits.confirm' => 'Confirm bulk splits',
+                'bulk_splits.delete'  => 'Cancel bulk splits',
+            ],
             'Stock Verification' => [
                 'stock_verifications.view'    => 'View stock counts',
                 'stock_verifications.create'  => 'Create & submit stock counts',
@@ -46,8 +52,10 @@ class PermissionRegistry
             'Units'      => $crud('units', 'units'),
             'Roles'      => $crud('roles', 'roles'),
             'Users'      => [
-                'users.view'         => 'View users',
-                'users.assign-roles' => 'Assign roles to users',
+                'users.view'   => 'View users',
+                'users.create' => 'Create users',
+                'users.update' => 'Edit users',
+                'users.delete' => 'Remove users',
             ],
         ];
     }

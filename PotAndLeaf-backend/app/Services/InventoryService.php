@@ -81,4 +81,80 @@ class InventoryService
             ->paginate(30)
             ->withQueryString();
     }
+
+    /** Stock valuation: current_stock × cost_price per product, plus totals. */
+    public function valuation(int|string $companyId): array
+    {
+        $rows = Product::query()
+            ->forCompany($companyId)
+            ->orderBy('name')
+            ->get(['id', 'sku', 'name', 'current_stock', 'cost_price'])
+            ->map(fn ($p) => [
+                'id'    => $p->id,
+                'sku'   => $p->sku,
+                'name'  => $p->name,
+                'stock' => (float) $p->current_stock,
+                'cost'  => (float) $p->cost_price,
+                'value' => round((float) $p->current_stock * (float) $p->cost_price, 2),
+            ]);
+
+        return [
+            'items'  => $rows->values(),
+            'totals' => [
+                'products'    => $rows->count(),
+                'total_units' => round($rows->sum('stock'), 3),
+                'total_value' => round($rows->sum('value'), 2),
+            ],
+        ];
+    }
+
+    /**
+     * Fast / slow / dead classification by outbound movement over a window.
+     * dead = no outbound in the window; fast = outbound at or above the average
+     * of the movers; slow = some movement below that average.
+     */
+    public function movement(int|string $companyId, int $days = 30): array
+    {
+        $since = now()->subDays($days);
+
+        $out = StockLedgerEntry::query()
+            ->forCompany($companyId)
+            ->where('direction', 'out')
+            ->where('occurred_at', '>=', $since)
+            ->selectRaw('product_id, SUM(qty) as out_qty, MAX(occurred_at) as last_out')
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $movers = $out->where('out_qty', '>', 0);
+        $avg = $movers->count() ? (float) $movers->avg('out_qty') : 0.0;
+
+        $rows = Product::query()
+            ->forCompany($companyId)
+            ->orderBy('name')
+            ->get(['id', 'sku', 'name', 'current_stock'])
+            ->map(function ($p) use ($out, $avg) {
+                $outQty = (float) ($out[$p->id]->out_qty ?? 0);
+                $class = $outQty <= 0 ? 'dead' : ($outQty >= $avg ? 'fast' : 'slow');
+                return [
+                    'id'       => $p->id,
+                    'sku'      => $p->sku,
+                    'name'     => $p->name,
+                    'stock'    => (float) $p->current_stock,
+                    'out_qty'  => round($outQty, 3),
+                    'last_out' => $out[$p->id]->last_out ?? null,
+                    'class'    => $class,
+                ];
+            });
+
+        return [
+            'days'    => $days,
+            'items'   => $rows->values(),
+            'summary' => [
+                'fast' => $rows->where('class', 'fast')->count(),
+                'slow' => $rows->where('class', 'slow')->count(),
+                'dead' => $rows->where('class', 'dead')->count(),
+            ],
+        ];
+    }
 }

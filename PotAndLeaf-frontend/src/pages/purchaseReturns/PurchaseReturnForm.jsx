@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Card, Field, Input, Spinner } from '../../components/ui';
 import { formatCurrency } from '../../lib/format';
 import { computePurchase } from '../../lib/purchaseCalc';
@@ -13,6 +14,7 @@ const numInput =
 
 export default function PurchaseReturnForm() {
   const navigate = useNavigate();
+  const { activeCompany } = useAuth();
   const [purchaseId, setPurchaseId] = useState('');
   const [returnDate, setReturnDate] = useState(today());
   const [reason, setReason] = useState('');
@@ -23,13 +25,13 @@ export default function PurchaseReturnForm() {
 
   // Confirmed purchases to return against.
   const { data: purchaseList } = useQuery({
-    queryKey: ['purchases', 'confirmed-picker'],
+    queryKey: ['purchases', 'confirmed-picker', activeCompany?.id],
     queryFn: () => api.get('/purchases', { params: { status: 'confirmed', per_page: 100 } }).then((r) => r.data),
   });
 
   // Returnable lines for the chosen purchase.
   const { data: source, isFetching: loadingSource } = useQuery({
-    queryKey: ['return-source', purchaseId],
+    queryKey: ['return-source', activeCompany?.id, purchaseId],
     queryFn: () => api.get('/purchase-returns/source', { params: { purchase_id: purchaseId } }).then((r) => r.data.data),
     enabled: Boolean(purchaseId),
   });

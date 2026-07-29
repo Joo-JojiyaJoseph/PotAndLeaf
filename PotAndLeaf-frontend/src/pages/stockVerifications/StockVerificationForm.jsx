@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Card, Field, Input, Spinner } from '../../components/ui';
 import { classNames } from '../../lib/format';
 
@@ -17,6 +18,7 @@ function varianceClass(v) {
 
 export default function StockVerificationForm() {
   const navigate = useNavigate();
+  const { activeCompany } = useAuth();
   const [countDate, setCountDate] = useState(today());
   const [locationNote, setLocationNote] = useState('');
   const [notes, setNotes] = useState('');
@@ -26,7 +28,8 @@ export default function StockVerificationForm() {
   const [saving, setSaving] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sv-form-data'],
+    queryKey: ['sv-form-data', activeCompany?.id],
+    enabled: Boolean(activeCompany),
     queryFn: () => api.get('/stock-verifications/form-data').then((r) => r.data.data),
   });
 

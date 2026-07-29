@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
     {
         $admin = User::firstOrCreate(
             ['email' => 'admin@potandleaf.test'],
-            ['name' => 'Pot & Leaf Admin', 'password' => Hash::make('password')],
+            ['name' => 'Pot & Leaf Admin', 'password' => Hash::make('password'), 'is_super_admin' => true, 'is_active' => true],
         );
 
         // Give the admin access to every company; default to the HO.
