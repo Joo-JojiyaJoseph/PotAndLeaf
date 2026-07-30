@@ -17,7 +17,7 @@ class Purchase extends Model
     protected $fillable = [
         'company_id', 'supplier_id', 'purchase_no', 'invoice_no', 'invoice_date',
         'purchase_date', 'is_interstate', 'subtotal', 'discount_total', 'tax_total',
-        'landed_cost_total', 'grand_total', 'status', 'notes', 'confirmed_at',
+        'landed_cost_total', 'grand_total', 'amount_paid', 'status', 'notes', 'confirmed_at',
     ];
 
     protected function casts(): array
@@ -45,9 +45,26 @@ class Purchase extends Model
         return $this->hasMany(PurchaseItem::class);
     }
 
+    public function supplierPayments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class);
+    }
+
     public function scopeForCompany($query, int|string $companyId)
     {
         return $query->where('company_id', $companyId);
+    }
+
+    public function paymentStatus(): string
+    {
+        if ($this->status !== 'confirmed') {
+            return 'n/a';
+        }
+        $paid = (float) $this->amount_paid;
+        $total = (float) $this->grand_total;
+        if ($paid <= 0) return 'unpaid';
+        if ($paid + 0.01 < $total) return 'partial';
+        return 'paid';
     }
 
     public function isDraft(): bool

@@ -220,3 +220,97 @@ new product columns `length_cm/width_cm/height_cm`).
 Per-location **in-transit** and **rental** stock buckets depend on Stock Transfer and
 Plant Rental — those are Module 05/06 and will land with Milestone 3. Purchase-list PDF
 export is a small follow-up.
+
+---
+
+## Detail pages + Customer master
+
+**Detail pages.** Records are now viewable, not just editable. Click the name/number
+in any list to open a full detail page: **Purchase** (GRN with line items, GST split,
+landed cost, totals + confirm/cancel/edit), **Purchase Return** (debit-note breakdown),
+**Stock Count** (counted items + variance, with submit/approve/reject), **Bulk Split**
+(source + outputs with cost allocation), **Supplier**, **User**, and **Customer**.
+Document actions live on the detail page; master records show an Edit shortcut.
+
+**Customer master (Module 12).** New `customers` table and full CRUD, mirroring
+suppliers: types (retail / wholesale / dealer), GST, contact + WhatsApp, address,
+credit terms, opening balance, outstanding, and loyalty points (for the future
+loyalty module). Inline-validated create/edit + detail page. Permissions
+`customers.view/create/update/delete`; seeded 3 customers per company. This is the
+foundation the Sales/POS and Loyalty modules will build on.
+
+Re-run `php artisan migrate:fresh --seed` (new table `customers`).
+
+---
+
+## Sales / POS (Module 03)
+
+Point-of-sale billing that reuses the Customer master, Products, Inventory and GST.
+- **POS entry** — pick a customer (or Walk-in), add product lines. The rate auto-fills
+  from the customer's **pricing tier** (retail / wholesale / dealer) and is editable.
+  Live GST split (CGST+SGST or IGST), per-line discount, and a **round-off** to the
+  nearest rupee. Super admins get a "billing for company" picker.
+- **Confirm** posts stock **out** (COGS at product cost), and for a chosen customer
+  updates **outstanding** (credit sales) and **loyalty points** (1 per ₹100). Cancel
+  reverses all of it. Draft → confirmed → cancelled, guarded against overselling.
+- **List + invoice detail** with full line items and totals.
+
+Permissions `sales.view/create/confirm/delete` are seeded to Manager, Cashier and
+Salesman roles (which also now get Customers access). Endpoints: `/sales`
+(+ `form-data`, `{id}/confirm`, `DELETE`). Re-run `php artisan migrate:fresh --seed`
+(new tables `sales`, `sale_items`).
+
+---
+
+## Supplier Payment Tracking (Module 08)
+
+Payables now flow end to end. Confirming a purchase **adds its total to the
+supplier's outstanding**; cancelling reverses it. A new **Payments** screen records
+payments against a supplier (and optionally allocates them to a specific GRN):
+
+- **Record payment** — pick a supplier (shows current outstanding), optionally choose
+  an unpaid/partly-paid GRN (auto-fills the balance), enter amount, mode
+  (cash / bank / UPI / cheque) and a UTR/cheque reference. Recording it decreases the
+  supplier's outstanding and increases the GRN's paid amount; deleting reverses both.
+- **Purchase payment status** — purchases now show **paid / partial / unpaid** badges
+  and a Paid/Balance breakdown on the detail page.
+
+Permissions `payments.view/create/delete` (seeded to Manager). Endpoints:
+`/supplier-payments` (+ `form-data`, `DELETE`). Re-run `php artisan migrate:fresh --seed`
+(new table `supplier_payments`, new column `purchases.amount_paid`).
+
+---
+
+## Supplier Payment Tracking (Module 08)
+
+Money owed to suppliers, tracked per GRN. Confirming a purchase already raises the
+supplier's outstanding; this module records payments that draw it down.
+- **Payables tab** — every confirmed purchase with invoice total, **paid**, **balance**,
+  a **due date** (purchase date + supplier credit days), and a **paid / partial / unpaid**
+  status. A "Pay" button opens the record form pre-filled for that GRN.
+- **Record payment** — pick a supplier (shows current outstanding), optionally allocate
+  to a specific GRN, enter amount / mode (cash, bank, UPI, cheque) / date / reference.
+  Recording reduces the supplier's outstanding; voiding a payment restores it.
+- **Payment history tab** — all recorded payments, with void.
+
+Permissions `payments.view/create/delete` (seeded to Manager). Endpoints:
+`/supplier-payments` (+ `form-data`, `payables`, `DELETE`). Re-run
+`php artisan migrate:fresh --seed` (new table `supplier_payments`).
+
+---
+
+## Customer Receipts (receivables)
+
+The receivables mirror of supplier payments. A credit sale already raises the
+customer's outstanding at confirm; receipts draw it down.
+- **Receivables tab** — confirmed credit sales with credit amount, **received**,
+  **balance**, due date (sale date + customer credit days) and paid/partial/unpaid
+  status. A "Collect" button pre-fills the receipt form for that invoice.
+- **Record receipt** — pick a customer (shows outstanding), optionally allocate to an
+  invoice, enter amount / mode (cash, bank, UPI, cheque, card) / date / reference.
+  Recording reduces outstanding; voiding restores it.
+- **Receipt history tab** with void.
+
+Permissions `receipts.view/create/delete` (seeded to Manager + Cashier). Endpoints:
+`/customer-receipts` (+ `form-data`, `receivables`, `DELETE`). Re-run
+`php artisan migrate:fresh --seed` (new table `customer_receipts`).

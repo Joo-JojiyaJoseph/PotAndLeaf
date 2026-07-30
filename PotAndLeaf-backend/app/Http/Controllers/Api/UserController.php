@@ -48,6 +48,15 @@ class UserController extends Controller
         return $this->ok(['roles' => $roles]);
     }
 
+    public function show(Request $request, User $user): JsonResponse
+    {
+        $company = $this->company($request);
+        $this->allow($request, 'users.view');
+        $this->ensureMember($user, $company->id);
+
+        return $this->ok($this->present($user, $company->id));
+    }
+
     public function store(StoreUserRequest $request): JsonResponse
     {
         $company = $this->company($request);

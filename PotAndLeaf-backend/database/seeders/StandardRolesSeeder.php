@@ -20,11 +20,11 @@ class StandardRolesSeeder extends Seeder
         $all = Permission::pluck('id', 'name'); // name => id
 
         $roles = [
-            'Manager'      => ['suppliers.', 'products.', 'purchases.', 'inventory.', 'purchase_returns.', 'stock_verifications.', 'users.view', 'roles.view'],
-            'Cashier'      => ['products.view', 'purchases.view', 'inventory.view'],
+            'Manager'      => ['suppliers.', 'products.', 'purchases.', 'inventory.', 'purchase_returns.', 'stock_verifications.', 'bulk_splits.', 'sales.', 'customers.', 'payments.', 'receipts.', 'users.view', 'roles.view'],
+            'Cashier'      => ['products.view', 'inventory.view', 'sales.view', 'sales.create', 'sales.confirm', 'customers.view', 'customers.create', 'receipts.view', 'receipts.create'],
             'Godown Staff' => ['inventory.', 'stock_verifications.', 'products.view', 'purchases.view'],
             'Supervisor'   => ['products.view', 'inventory.view', 'stock_verifications.view'],
-            'Salesman'     => ['products.view', 'inventory.view'],
+            'Salesman'     => ['products.view', 'inventory.view', 'sales.view', 'sales.create', 'customers.view', 'customers.create'],
         ];
 
         Company::all()->each(function (Company $company) use ($roles, $all) {

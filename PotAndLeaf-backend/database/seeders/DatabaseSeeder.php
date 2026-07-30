@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             LookupSeeder::class,       // categories / brands / units per company
             SupplierSeeder::class,     // sample suppliers per company
             ProductSeeder::class,      // sample products per company
+            CustomerSeeder::class,     // sample customers per company
         ]);
     }
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
@@ -17,6 +17,7 @@ const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked
 
 export default function BulkSplitsList() {
   const { activeCompany, can } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
 
@@ -85,7 +86,7 @@ export default function BulkSplitsList() {
             <tbody>
               {rows.map((s) => (
                 <tr key={s.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
-                  <td className="tnum px-4 py-2.5 text-xs">{s.split_no}</td>
+                  <td className="tnum px-4 py-2.5 text-xs"><button onClick={() => navigate(`/bulk-splits/${s.id}`)} className="font-medium text-ink hover:text-leaf">{s.split_no}</button></td>
                   <td className="px-4 py-2.5 text-muted">{formatDate(s.split_date)}</td>
                   <td className="px-4 py-2.5 font-medium">{s.source_product_name}</td>
                   <td className="tnum px-4 py-2.5 text-right text-muted">{s.source_qty}</td>

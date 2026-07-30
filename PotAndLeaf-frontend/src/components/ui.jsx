@@ -65,12 +65,13 @@ const badgeTones = {
   default: 'bg-[#F1F5F3] text-muted',
 };
 
-export function Badge({ tone = 'default', children }) {
+export function Badge({ tone = 'default', children, className }) {
   return (
     <span
       className={classNames(
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize',
         badgeTones[tone] ?? badgeTones.default,
+        className,
       )}
     >
       {children}

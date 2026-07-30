@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   MagnifyingGlassIcon,
@@ -37,6 +38,7 @@ const selectClass =
 
 export default function SuppliersList() {
   const { activeCompany, can } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
@@ -181,7 +183,7 @@ export default function SuppliersList() {
                 {rows.map((s) => (
                   <tr key={s.id} className="border-b border-line/60 last:border-0 hover:bg-paper/60">
                     <td className="tnum px-4 py-2.5 text-xs">{s.supplier_code}</td>
-                    <td className="px-4 py-2.5 font-medium">{s.name}</td>
+                    <td className="px-4 py-2.5"><button onClick={() => navigate(`/suppliers/${s.id}`)} className="font-medium text-ink hover:text-leaf">{s.name}</button></td>
                     <td className="tnum px-4 py-2.5 text-xs text-muted">{s.gst_number || '—'}</td>
                     <td className="px-4 py-2.5 text-muted">{s.city || '—'}</td>
                     <td className="tnum px-4 py-2.5 text-right">

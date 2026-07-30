@@ -4,6 +4,7 @@ namespace App\Actions\Purchases;
 
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\Supplier;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -54,6 +55,14 @@ class ConfirmPurchase
 
                 $product->cost_price = $item->landed_unit_cost;
                 $product->save();
+            }
+
+            // A confirmed purchase is money owed to the supplier.
+            $supplier = Supplier::where('company_id', $purchase->company_id)
+                ->lockForUpdate()->find($purchase->supplier_id);
+            if ($supplier) {
+                $supplier->outstanding = (float) $supplier->outstanding + (float) $purchase->grand_total;
+                $supplier->save();
             }
 
             $purchase->update(['status' => 'confirmed', 'confirmed_at' => now()]);

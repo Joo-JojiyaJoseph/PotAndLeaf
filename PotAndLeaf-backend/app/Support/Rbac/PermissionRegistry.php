@@ -36,6 +36,28 @@ class PermissionRegistry
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
             'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Customer Receipts' => [
+                'receipts.view'   => 'View customer receipts',
+                'receipts.create' => 'Record customer receipts',
+                'receipts.delete' => 'Void customer receipts',
+            ],
+            'Supplier Payments' => [
+                'payments.view'   => 'View supplier payments',
+                'payments.create' => 'Record supplier payments',
+                'payments.delete' => 'Void supplier payments',
+            ],
+            'Sales'      => [
+                'sales.view'    => 'View sales',
+                'sales.create'  => 'Create sales',
+                'sales.confirm' => 'Confirm sales',
+                'sales.delete'  => 'Cancel sales',
+            ],
+            'Customers'  => $crud('customers', 'customers'),
+            'Supplier Payments' => [
+                'payments.view'   => 'View supplier payments',
+                'payments.create' => 'Record supplier payments',
+                'payments.delete' => 'Delete supplier payments',
+            ],
             'Bulk Splitting' => [
                 'bulk_splits.view'    => 'View bulk splits',
                 'bulk_splits.create'  => 'Create bulk splits',

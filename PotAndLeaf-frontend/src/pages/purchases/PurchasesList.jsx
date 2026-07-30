@@ -100,13 +100,16 @@ export default function PurchasesList() {
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="border-b border-line/60 last:border-0 hover:bg-paper/60">
-                  <td className="tnum px-4 py-2.5 text-xs">{p.purchase_no}</td>
+                  <td className="tnum px-4 py-2.5 text-xs"><button onClick={() => navigate(`/purchases/${p.id}`)} className="font-medium text-ink hover:text-leaf">{p.purchase_no}</button></td>
                   <td className="px-4 py-2.5 text-muted">{formatDate(p.purchase_date)}</td>
                   <td className="px-4 py-2.5 font-medium">{p.supplier?.name ?? '—'}</td>
                   <td className="tnum px-4 py-2.5 text-xs text-muted">{p.invoice_no || '—'}</td>
                   <td className="tnum px-4 py-2.5 text-right">{formatCurrency(p.grand_total)}</td>
                   <td className="px-4 py-2.5">
                     <Badge tone={statusTone[p.status] ?? 'default'}>{p.status}</Badge>
+                    {p.payment_status && p.payment_status !== 'n/a' && (
+                      <Badge tone={p.payment_status === 'paid' ? 'active' : p.payment_status === 'partial' ? 'warning' : 'blocked'} className="ml-1">{p.payment_status}</Badge>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-2">

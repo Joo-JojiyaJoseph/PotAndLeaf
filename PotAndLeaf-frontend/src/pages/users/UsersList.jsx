@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
@@ -10,6 +11,7 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 
 export default function UsersList() {
   const { activeCompany, can } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
@@ -86,7 +88,7 @@ export default function UsersList() {
               {rows.map((u) => (
                 <tr key={u.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
                   <td className="px-4 py-2.5 font-medium">
-                    {u.name}
+                    <button onClick={() => navigate(`/users/${u.id}`)} className="text-ink hover:text-leaf">{u.name}</button>
                     {u.is_super_admin && <span className="ml-2 rounded bg-leaf-soft px-1.5 py-0.5 text-[10px] font-medium text-leaf-hover">HO</span>}
                   </td>
                   <td className="px-4 py-2.5 text-muted">{u.email}</td>

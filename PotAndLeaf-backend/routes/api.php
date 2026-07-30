@@ -3,11 +3,15 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BulkSplitController;
 use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CustomerReceiptController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseReturnController;
+use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\SupplierPaymentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\StockVerificationController;
@@ -53,6 +57,35 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('suppliers/{supplier}', [SupplierController::class, 'show']);
         Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
         Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
+
+        // Module 08 — Customer receipts
+        Route::get('customer-receipts/form-data', [CustomerReceiptController::class, 'formData']);
+        Route::get('customer-receipts/receivables', [CustomerReceiptController::class, 'receivables']);
+        Route::get('customer-receipts', [CustomerReceiptController::class, 'index']);
+        Route::post('customer-receipts', [CustomerReceiptController::class, 'store']);
+        Route::delete('customer-receipts/{customerReceipt}', [CustomerReceiptController::class, 'destroy']);
+
+        // Module 08 — Supplier payments
+        Route::get('supplier-payments/form-data', [SupplierPaymentController::class, 'formData']);
+        Route::get('supplier-payments/payables', [SupplierPaymentController::class, 'payables']);
+        Route::get('supplier-payments', [SupplierPaymentController::class, 'index']);
+        Route::post('supplier-payments', [SupplierPaymentController::class, 'store']);
+        Route::delete('supplier-payments/{supplierPayment}', [SupplierPaymentController::class, 'destroy']);
+
+        // Module 03 — Sales / POS
+        Route::get('sales/form-data', [SaleController::class, 'formData']);
+        Route::get('sales', [SaleController::class, 'index']);
+        Route::post('sales', [SaleController::class, 'store']);
+        Route::get('sales/{sale}', [SaleController::class, 'show']);
+        Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
+        Route::delete('sales/{sale}', [SaleController::class, 'destroy']);
+
+        // Module 12 — Customer master (CRUD)
+        Route::get('customers', [CustomerController::class, 'index']);
+        Route::post('customers', [CustomerController::class, 'store']);
+        Route::get('customers/{customer}', [CustomerController::class, 'show']);
+        Route::put('customers/{customer}', [CustomerController::class, 'update']);
+        Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
 
         // Products master (CRUD)
         Route::get('products/form-data', [ProductController::class, 'formData']);
@@ -106,6 +139,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Module 14 — Access control: users & roles (company-scoped)
         Route::get('users/form-data', [UserController::class, 'formData']);
         Route::get('users', [UserController::class, 'index']);
+        Route::get('users/{user}', [UserController::class, 'show']);
         Route::post('users', [UserController::class, 'store']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::delete('users/{user}', [UserController::class, 'destroy']);

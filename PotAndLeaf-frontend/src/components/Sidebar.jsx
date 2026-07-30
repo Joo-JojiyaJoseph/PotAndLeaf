@@ -40,9 +40,9 @@ const GROUPS = [
   {
     label: 'Commerce',
     items: [
-      { key: 'pos', label: 'POS Sales', icon: CalculatorIcon, soon: true },
+      { key: 'pos', label: 'POS Sales', to: '/sales', icon: CalculatorIcon },
       { key: 'rental', label: 'Plant Rental', icon: GiftIcon, soon: true },
-      { key: 'customers', label: 'Customers', icon: UsersIcon, soon: true },
+      { key: 'customers', label: 'Customers', to: '/customers', icon: UsersIcon },
       { key: 'loyalty', label: 'Loyalty', icon: SparklesIcon, soon: true },
     ],
   },
@@ -50,6 +50,8 @@ const GROUPS = [
     label: 'Setup',
     items: [
       { key: 'suppliers', label: 'Suppliers', to: '/suppliers', icon: TruckIcon },
+      { key: 'payments', label: 'Payments', to: '/payments', icon: BanknotesIcon },
+      { key: 'receipts', label: 'Receipts', to: '/receipts', icon: ReceiptRefundIcon },
       { key: 'products', label: 'Products', to: '/products', icon: TagIcon },
       { key: 'roles', label: 'Roles', to: '/roles', icon: ShieldCheckIcon },
       { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },

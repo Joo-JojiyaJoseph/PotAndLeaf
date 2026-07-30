@@ -48,6 +48,14 @@ class CancelPurchase
 
                     $product->save();
                 }
+
+                // Reverse the payable created when the purchase was confirmed.
+                $supplier = \App\Models\Supplier::where('company_id', $purchase->company_id)
+                    ->lockForUpdate()->find($purchase->supplier_id);
+                if ($supplier) {
+                    $supplier->outstanding = (float) $supplier->outstanding - (float) $purchase->grand_total;
+                    $supplier->save();
+                }
             }
 
             $purchase->update(['status' => 'cancelled']);

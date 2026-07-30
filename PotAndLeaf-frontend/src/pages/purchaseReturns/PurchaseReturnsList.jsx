@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
@@ -18,6 +18,7 @@ const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked
 
 export default function PurchaseReturnsList() {
   const { activeCompany, can } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
 
@@ -99,7 +100,7 @@ export default function PurchaseReturnsList() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-line/60 last:border-0 hover:bg-paper/60">
-                  <td className="tnum px-4 py-2.5 text-xs">{r.return_no}</td>
+                  <td className="tnum px-4 py-2.5 text-xs"><button onClick={() => navigate(`/purchase-returns/${r.id}`)} className="font-medium text-ink hover:text-leaf">{r.return_no}</button></td>
                   <td className="px-4 py-2.5 text-muted">{formatDate(r.return_date)}</td>
                   <td className="tnum px-4 py-2.5 text-xs text-muted">{r.purchase?.purchase_no ?? '—'}</td>
                   <td className="px-4 py-2.5 font-medium">{r.supplier?.name ?? '—'}</td>
