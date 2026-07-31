@@ -18,6 +18,7 @@ class StoreSaleRequest extends FormRequest
 
         return [
             'customer_id'   => ['nullable', 'uuid', Rule::exists('customers', 'id')->where('company_id', $companyId)],
+            'location_id'   => ['nullable', 'uuid', Rule::exists('locations', 'id')->where('company_id', $companyId)],
             'customer_name' => ['nullable', 'string', 'max:150'],
             'sale_date'     => ['required', 'date'],
             'is_interstate' => ['boolean'],

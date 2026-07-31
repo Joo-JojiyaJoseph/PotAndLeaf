@@ -37,6 +37,7 @@ class CreateSale
             $sale = $this->sales->create([
                 'company_id'    => $companyId,
                 'customer_id'   => $data['customer_id'] ?? null,
+                'location_id'   => $data['location_id'] ?? null,
                 'customer_name' => $customerName,
                 'sale_no'       => $this->sales->nextSaleNo($companyId),
                 'sale_date'     => $data['sale_date'],

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CommissionController;
 use App\Http\Controllers\Api\CustomerReceiptController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\ProductionController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ProductController;
@@ -117,6 +118,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('purchases/{purchase}', [PurchaseController::class, 'destroy']);
 
         // Milestone 2 — Inventory
+        // Module 02 — Production / BOM
+        Route::get('production/form-data', [ProductionController::class, 'formData']);
+        Route::get('production/boms', [ProductionController::class, 'boms']);
+        Route::post('production/boms', [ProductionController::class, 'storeBom']);
+        Route::put('production/boms/{bom}', [ProductionController::class, 'updateBom']);
+        Route::delete('production/boms/{bom}', [ProductionController::class, 'destroyBom']);
+        Route::get('production/orders', [ProductionController::class, 'orders']);
+        Route::post('production/orders', [ProductionController::class, 'storeOrder']);
+        Route::get('production/orders/{productionOrder}', [ProductionController::class, 'showOrder']);
+        Route::post('production/orders/{productionOrder}/complete', [ProductionController::class, 'complete']);
+        Route::delete('production/orders/{productionOrder}', [ProductionController::class, 'destroyOrder']);
+
         // Module 05 — Locations & stock transfers
         Route::get('locations', [LocationController::class, 'index']);
         Route::post('locations', [LocationController::class, 'store']);

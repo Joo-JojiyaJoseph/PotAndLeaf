@@ -38,7 +38,7 @@ const GROUPS = [
       { key: 'stock-verifications', label: 'Stock Count', to: '/stock-verifications', icon: ClipboardDocumentCheckIcon },
       { key: 'bulk-splits', label: 'Bulk Split', to: '/bulk-splits', icon: ScissorsIcon },
       { key: 'transfers', label: 'Transfers', to: '/transfers', icon: ArrowsRightLeftIcon },
-      { key: 'production', label: 'Production', icon: BeakerIcon, soon: true },
+      { key: 'production', label: 'Production', to: '/production', icon: BeakerIcon },
     ],
   },
   {

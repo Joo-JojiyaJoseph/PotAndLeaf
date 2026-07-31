@@ -15,7 +15,7 @@ class Sale extends Model
     use HasAuditColumns, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id', 'customer_id', 'customer_name', 'sale_no', 'sale_date',
+        'company_id', 'customer_id', 'location_id', 'customer_name', 'sale_no', 'sale_date',
         'is_interstate', 'payment_mode', 'subtotal', 'tax_total', 'round_off',
         'grand_total', 'amount_paid', 'status', 'notes', 'confirmed_at',
     ];

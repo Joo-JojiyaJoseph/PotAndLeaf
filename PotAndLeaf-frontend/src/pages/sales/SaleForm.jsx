@@ -16,7 +16,7 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 export default function SaleForm() {
   const navigate = useNavigate();
   const { isSuperAdmin, companies, companyId, selectCompany, activeCompany } = useAuth();
-  const [header, setHeader] = useState({ customer_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '' });
+  const [header, setHeader] = useState({ customer_id: '', location_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '' });
   const [lines, setLines] = useState([emptyLine()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -28,11 +28,19 @@ export default function SaleForm() {
   });
   const products = data?.products ?? [];
   const customers = data?.customers ?? [];
+  const locations = data?.locations ?? [];
   const productsById = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const customer = customers.find((c) => c.id === header.customer_id);
   const customerType = customer?.type ?? 'retail';
 
-  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
+  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '', location_id: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
+  useEffect(() => {
+    if (locations.length && !header.location_id) {
+      const def = locations.find((l) => l.is_default) ?? locations[0];
+      setHeader((h) => ({ ...h, location_id: def.id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations]);
 
   const computed = useMemo(() => computeSale(lines, header.is_interstate), [lines, header.is_interstate]);
   const t = computed.totals;
@@ -50,6 +58,7 @@ export default function SaleForm() {
     try {
       const res = await api.post('/sales', {
         customer_id: header.customer_id || null,
+        location_id: header.location_id || null,
         sale_date: header.sale_date,
         is_interstate: header.is_interstate,
         payment_mode: header.payment_mode,
@@ -97,6 +106,12 @@ export default function SaleForm() {
             <select value={header.customer_id} onChange={(e) => setHeader((h) => ({ ...h, customer_id: e.target.value }))} className={selectCls}>
               <option value="">Walk-in</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.type}</option>)}
+            </select>
+          </Field>
+          <Field label="Location" error={err('location_id')}>
+            <select value={header.location_id} onChange={(e) => setHeader((h) => ({ ...h, location_id: e.target.value }))} className={selectCls}>
+              <option value="">Default</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </Field>
           <Field label="Sale date" required error={err('sale_date')}>

@@ -27,6 +27,8 @@ import TransfersList from './pages/transfers/TransfersList';
 import TransferForm from './pages/transfers/TransferForm';
 import TransferDetail from './pages/transfers/TransferDetail';
 import LocationsList from './pages/locations/LocationsList';
+import ProductionList from './pages/production/ProductionList';
+import ProductionOrderDetail from './pages/production/ProductionOrderDetail';
 import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import PurchaseDetail from './pages/purchases/PurchaseDetail';
@@ -80,6 +82,8 @@ export default function App() {
           <Route path="transfers/new" element={<TransferForm />} />
           <Route path="transfers/:id" element={<TransferDetail />} />
           <Route path="locations" element={<LocationsList />} />
+          <Route path="production" element={<ProductionList />} />
+          <Route path="production/orders/:id" element={<ProductionOrderDetail />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

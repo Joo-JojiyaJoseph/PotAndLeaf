@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Sale\StoreSaleRequest;
 use App\Http\Resources\SaleResource;
 use App\Models\Customer;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Services\SaleService;
@@ -45,7 +46,11 @@ class SaleController extends Controller
                 'dealer_price' => (float) $p->dealer_price, 'mrp' => (float) $p->mrp,
             ]);
 
-        return $this->ok(['customers' => $customers, 'products' => $products]);
+        $locations = Location::forCompany($company->id)->where('is_active', true)->orderByDesc('is_default')->orderBy('name')
+            ->get(['id', 'name', 'is_default'])
+            ->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'is_default' => (bool) $l->is_default]);
+
+        return $this->ok(['customers' => $customers, 'products' => $products, 'locations' => $locations]);
     }
 
     public function store(StoreSaleRequest $request): JsonResponse

@@ -5,7 +5,9 @@ namespace App\Actions\Sales;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\Location;
 use App\Services\InventoryService;
+use App\Services\LocationStockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -16,7 +18,10 @@ use Illuminate\Validation\ValidationException;
  */
 class ConfirmSale
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly LocationStockService $locations,
+    ) {}
 
     public function handle(Sale $sale, ?int $userId = null): Sale
     {
@@ -26,6 +31,11 @@ class ConfirmSale
 
         return DB::transaction(function () use ($sale, $userId) {
             $sale->loadMissing('items');
+
+            // Which location this bill draws from (falls back to the default).
+            $location = $sale->location_id
+                ? Location::forCompany($sale->company_id)->find($sale->location_id)
+                : $this->locations->defaultLocation($sale->company_id);
 
             foreach ($sale->items as $item) {
                 if (! $item->product_id) {
@@ -46,6 +56,10 @@ class ConfirmSale
                     referenceId: $sale->id, note: "Sale {$sale->sale_no}", userId: $userId,
                 );
                 $product->save();
+
+                if ($location) {
+                    $this->locations->adjust($sale->company_id, $location->id, $product->id, 'out', (float) $item->qty);
+                }
             }
 
             if ($sale->customer_id) {

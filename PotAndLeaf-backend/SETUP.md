@@ -372,3 +372,48 @@ so `supplier_payments.supplier_id` must be `foreignUuid`, not `foreignId` (bigin
 build corrects it. Re-run `php artisan migrate:fresh --seed`. (All other new tables were
 already correctly typed — `foreignUuid` for UUID tables, `foreignId` only for the bigint
 `companies` and `users`.)
+
+---
+
+## Sales now post per-location + demo data
+
+**POS per-location** — a sale can name the location it bills from (defaults to the
+default location). Confirming a sale decrements that location's balance (and restores it
+on cancel), so `Inventory → By location` stays accurate for both purchases and sales.
+New nullable `sales.location_id`; the POS form has a Location picker.
+
+**Demo dataset** — `DemoSeeder` seeds a complete slice of live activity for the first
+company on `migrate:fresh --seed`: two confirmed purchases, three sales (incl. one credit
+sale → receivable + customer outstanding), a partial supplier payment, a partial customer
+receipt, and a commission rule for the admin. So Reports/Payables/Receivables/Commission/
+By-location all show real numbers immediately. It's **idempotent** (skips if the company
+already has purchases) and runs last in the seeder chain. To skip it, remove
+`DemoSeeder::class` from `database/seeders/DatabaseSeeder.php`.
+
+## Codebase audits (defensive)
+
+Two whole-repo checks were run to catch the classes of bug that only surface at runtime:
+- **FK type audit** — every migration foreign key matches the referenced table's PK type
+  (`foreignUuid` for UUID tables, `foreignId` only for the bigint `companies`/`users`).
+- **SPA reference audit** — every component/icon used in JSX is imported or locally
+  defined. Both pass clean.
+
+---
+
+## Production / BOM (Module 02)
+
+Raise finished plants from input materials, with cost flowing from inputs to output.
+- **Bills of materials** — a recipe: an output product, the units it yields, and the
+  component products (with quantities) consumed to make it. Managed under Production → BOMs.
+- **Production orders** — pick a BOM + output quantity + location. Completing the order:
+  consumes each component from stock (company + location) at its cost price, guards against
+  shortfalls, then produces the output at a **unit cost derived from total input cost ÷
+  output quantity** (and refreshes the output product's cost). Draft → completed →
+  cancelled (cancel reverses inputs and output). The order detail shows the materials
+  consumed and the resulting unit cost.
+- The demo seed now includes a BOM and one completed run so the module shows live data.
+
+Permissions `production.view / manage_bom / create / complete / delete` (seeded to
+Manager). Endpoints under `/production` (`form-data`, `boms`, `orders`,
+`orders/{id}/complete`). Re-run `php artisan migrate:fresh --seed` (new tables `boms`,
+`bom_items`, `production_orders`, `production_order_items`).

@@ -36,6 +36,13 @@ class PermissionRegistry
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
             'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Production' => [
+                'production.view'       => 'View production & BOMs',
+                'production.manage_bom' => 'Manage bills of materials',
+                'production.create'     => 'Create production orders',
+                'production.complete'   => 'Complete production orders',
+                'production.delete'     => 'Cancel production orders',
+            ],
             'Stock Transfers' => [
                 'transfers.view'     => 'View transfers',
                 'transfers.create'   => 'Create transfers',

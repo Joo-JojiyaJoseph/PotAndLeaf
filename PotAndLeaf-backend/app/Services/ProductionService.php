@@ -1,0 +1,233 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Bom;
+use App\Models\Product;
+use App\Models\ProductionOrder;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class ProductionService
+{
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly LocationStockService $locations,
+    ) {}
+
+    // ---- Bill of Materials ----
+
+    public function boms(int|string $companyId)
+    {
+        return Bom::forCompany($companyId)
+            ->with(['product:id,sku,name', 'items.component:id,sku,name'])
+            ->orderBy('name')->get();
+    }
+
+    public function upsertBom(int|string $companyId, array $data): Bom
+    {
+        return DB::transaction(function () use ($companyId, $data) {
+            $bom = Bom::updateOrCreate(
+                ['id' => $data['id'] ?? null, 'company_id' => $companyId],
+                [
+                    'product_id' => $data['product_id'],
+                    'name'       => $data['name'],
+                    'output_qty' => $data['output_qty'] ?? 1,
+                    'is_active'  => $data['is_active'] ?? true,
+                    'notes'      => $data['notes'] ?? null,
+                ],
+            );
+
+            $bom->items()->delete();
+            $bom->items()->createMany(collect($data['items'])->map(fn ($i) => [
+                'component_product_id' => $i['component_product_id'],
+                'qty'                  => $i['qty'],
+            ])->all());
+
+            return $bom->load(['product:id,sku,name', 'items.component:id,sku,name']);
+        });
+    }
+
+    public function deleteBom(Bom $bom): void
+    {
+        $bom->delete();
+    }
+
+    // ---- Production orders ----
+
+    public function orders(int|string $companyId, array $filters): LengthAwarePaginator
+    {
+        return ProductionOrder::forCompany($companyId)
+            ->with('outputProduct:id,sku,name')
+            ->when(filled($filters['status'] ?? null), fn ($q) => $q->where('status', $filters['status']))
+            ->orderByDesc('order_date')->orderByDesc('created_at')
+            ->paginate(min((int) ($filters['per_page'] ?? 15), 100))
+            ->withQueryString();
+    }
+
+    public function findOrder(int|string $companyId, string $id): ?ProductionOrder
+    {
+        return ProductionOrder::forCompany($companyId)
+            ->with(['items', 'outputProduct:id,sku,name', 'bom:id,name'])
+            ->whereKey($id)->first();
+    }
+
+    public function createOrder(int|string $companyId, array $data, ?int $userId = null): ProductionOrder
+    {
+        $bom = Bom::forCompany($companyId)->with('items')->findOrFail($data['bom_id']);
+
+        $order = ProductionOrder::create([
+            'company_id'       => $companyId,
+            'bom_id'           => $bom->id,
+            'output_product_id' => $bom->product_id,
+            'location_id'      => $data['location_id'] ?? null,
+            'order_no'         => $this->nextOrderNo($companyId),
+            'order_date'       => $data['order_date'],
+            'output_quantity'  => $data['output_quantity'],
+            'status'           => 'draft',
+            'notes'            => $data['notes'] ?? null,
+        ]);
+
+        return $order->load(['outputProduct:id,sku,name', 'bom:id,name']);
+    }
+
+    /** Consume inputs, produce output at derived unit cost. */
+    public function complete(ProductionOrder $order, ?int $userId = null): ProductionOrder
+    {
+        if (! $order->isDraft()) {
+            throw ValidationException::withMessages(['status' => 'Only draft orders can be completed.']);
+        }
+
+        $bom = Bom::forCompany($order->company_id)->with('items')->find($order->bom_id);
+        if (! $bom || $bom->items->isEmpty()) {
+            throw ValidationException::withMessages(['bom' => 'This order has no bill of materials to consume.']);
+        }
+
+        return DB::transaction(function () use ($order, $bom, $userId) {
+            $factor = (float) $bom->output_qty > 0 ? (float) $order->output_quantity / (float) $bom->output_qty : 0.0;
+            $location = $order->location_id
+                ? \App\Models\Location::forCompany($order->company_id)->find($order->location_id)
+                : $this->locations->defaultLocation($order->company_id);
+
+            // Pre-check stock for all components.
+            $plan = [];
+            foreach ($bom->items as $bomItem) {
+                $needed = round((float) $bomItem->qty * $factor, 3);
+                $product = Product::forCompany($order->company_id)->lockForUpdate()->find($bomItem->component_product_id);
+                if (! $product) {
+                    continue;
+                }
+                if ((float) $product->current_stock < $needed) {
+                    throw ValidationException::withMessages([
+                        'items' => "Not enough {$product->name}: {$product->current_stock} available, {$needed} required.",
+                    ]);
+                }
+                $plan[] = [$product, $needed];
+            }
+
+            $inputCost = 0.0;
+            foreach ($plan as [$product, $needed]) {
+                $unitCost = (float) $product->cost_price;
+                $this->inventory->post(
+                    product: $product, direction: 'out', qty: $needed, unitCost: $unitCost,
+                    referenceType: 'production', referenceId: $order->id,
+                    note: "Production {$order->order_no}", userId: $userId,
+                );
+                $product->save();
+                if ($location) {
+                    $this->locations->adjust($order->company_id, $location->id, $product->id, 'out', $needed);
+                }
+                $lineCost = round($needed * $unitCost, 2);
+                $inputCost += $lineCost;
+                $order->items()->create([
+                    'component_product_id' => $product->id,
+                    'product_name'         => $product->name,
+                    'qty'                  => $needed,
+                    'unit_cost'            => $unitCost,
+                    'line_cost'            => $lineCost,
+                ]);
+            }
+
+            $outQty = (float) $order->output_quantity;
+            $unitCost = $outQty > 0 ? round($inputCost / $outQty, 4) : 0.0;
+            $output = Product::forCompany($order->company_id)->lockForUpdate()->find($order->output_product_id);
+            if ($output) {
+                $this->inventory->post(
+                    product: $output, direction: 'in', qty: $outQty, unitCost: $unitCost,
+                    referenceType: 'production', referenceId: $order->id,
+                    note: "Production {$order->order_no}", userId: $userId,
+                );
+                $output->cost_price = $unitCost;
+                $output->save();
+                if ($location) {
+                    $this->locations->adjust($order->company_id, $location->id, $output->id, 'in', $outQty);
+                }
+            }
+
+            $order->update([
+                'total_input_cost' => round($inputCost, 2),
+                'output_unit_cost' => $unitCost,
+                'status'           => 'completed',
+                'completed_at'     => now(),
+            ]);
+
+            return $order->refresh()->load(['items', 'outputProduct:id,sku,name', 'bom:id,name']);
+        });
+    }
+
+    public function cancel(ProductionOrder $order, ?int $userId = null): ProductionOrder
+    {
+        return DB::transaction(function () use ($order, $userId) {
+            if ($order->isCompleted()) {
+                $order->loadMissing('items');
+                $location = $order->location_id
+                    ? \App\Models\Location::forCompany($order->company_id)->find($order->location_id)
+                    : $this->locations->defaultLocation($order->company_id);
+
+                // Un-produce the output.
+                $output = Product::forCompany($order->company_id)->lockForUpdate()->find($order->output_product_id);
+                if ($output) {
+                    $this->inventory->post(
+                        product: $output, direction: 'out', qty: (float) $order->output_quantity,
+                        unitCost: (float) $order->output_unit_cost, referenceType: 'production-cancel',
+                        referenceId: $order->id, note: "Reversal of {$order->order_no}", userId: $userId,
+                    );
+                    $output->save();
+                    if ($location) {
+                        $this->locations->adjust($order->company_id, $location->id, $output->id, 'out', (float) $order->output_quantity);
+                    }
+                }
+                // Return the inputs.
+                foreach ($order->items as $item) {
+                    if (! $item->component_product_id) {
+                        continue;
+                    }
+                    $product = Product::forCompany($order->company_id)->lockForUpdate()->find($item->component_product_id);
+                    if (! $product) {
+                        continue;
+                    }
+                    $this->inventory->post(
+                        product: $product, direction: 'in', qty: (float) $item->qty,
+                        unitCost: (float) $item->unit_cost, referenceType: 'production-cancel',
+                        referenceId: $order->id, note: "Reversal of {$order->order_no}", userId: $userId,
+                    );
+                    $product->save();
+                    if ($location) {
+                        $this->locations->adjust($order->company_id, $location->id, $product->id, 'in', (float) $item->qty);
+                    }
+                }
+            }
+            $order->update(['status' => 'cancelled']);
+
+            return $order->refresh();
+        });
+    }
+
+    private function nextOrderNo(int|string $companyId): string
+    {
+        $count = ProductionOrder::withTrashed()->forCompany($companyId)->count();
+
+        return 'PRD-'.str_pad((string) ($count + 1), 6, '0', STR_PAD_LEFT);
+    }
+}
