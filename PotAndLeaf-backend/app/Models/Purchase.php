@@ -15,7 +15,7 @@ class Purchase extends Model
     use HasAuditColumns, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id', 'supplier_id', 'purchase_no', 'invoice_no', 'invoice_date',
+        'company_id', 'supplier_id', 'location_id', 'purchase_no', 'invoice_no', 'invoice_date',
         'purchase_date', 'is_interstate', 'subtotal', 'discount_total', 'tax_total',
         'landed_cost_total', 'grand_total', 'amount_paid', 'status', 'notes', 'confirmed_at',
     ];

@@ -36,6 +36,22 @@ class PermissionRegistry
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
             'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Stock Transfers' => [
+                'transfers.view'     => 'View transfers',
+                'transfers.create'   => 'Create transfers',
+                'transfers.dispatch' => 'Dispatch transfers',
+                'transfers.receive'  => 'Receive transfers',
+                'transfers.delete'   => 'Cancel transfers',
+            ],
+            'Locations'  => [
+                'locations.view'   => 'View locations',
+                'locations.manage' => 'Manage locations',
+            ],
+            'Commission' => [
+                'commission.view'   => 'View commission rules & payouts',
+                'commission.manage' => 'Edit commission rules',
+                'commission.pay'    => 'Record commission payouts',
+            ],
             'Customer Receipts' => [
                 'receipts.view'   => 'View customer receipts',
                 'receipts.create' => 'Record customer receipts',

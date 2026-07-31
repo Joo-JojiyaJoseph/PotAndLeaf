@@ -15,7 +15,8 @@ class DatabaseSeeder extends Seeder
             AdminRoleSeeder::class,    // Administrator role per company, assigned to admin
             StandardRolesSeeder::class, // branch roles: Manager, Cashier, Godown, Supervisor, Salesman
             BranchUserSeeder::class,    // sample per-company logins (manager/cashier)
-            LookupSeeder::class,       // categories / brands / units per company
+            LookupSeeder::class,
+            LocationSeeder::class,     // default godown + shop per company       // categories / brands / units per company
             SupplierSeeder::class,     // sample suppliers per company
             ProductSeeder::class,      // sample products per company
             CustomerSeeder::class,     // sample customers per company

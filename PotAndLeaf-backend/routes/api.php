@@ -4,9 +4,12 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BulkSplitController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CommissionController;
 use App\Http\Controllers\Api\CustomerReceiptController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\TransferController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseReturnController;
@@ -58,6 +61,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
         Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
 
+        // Module 07 — Commission
+        Route::get('commission/form-data', [CommissionController::class, 'formData']);
+        Route::get('commission/rules', [CommissionController::class, 'rules']);
+        Route::post('commission/rules', [CommissionController::class, 'upsertRule']);
+        Route::get('commission/compute', [CommissionController::class, 'compute']);
+        Route::get('commission/payouts', [CommissionController::class, 'payouts']);
+        Route::post('commission/payouts', [CommissionController::class, 'storePayout']);
+        Route::delete('commission/payouts/{commissionPayout}', [CommissionController::class, 'destroyPayout']);
+
         // Module 08 — Customer receipts
         Route::get('customer-receipts/form-data', [CustomerReceiptController::class, 'formData']);
         Route::get('customer-receipts/receivables', [CustomerReceiptController::class, 'receivables']);
@@ -105,6 +117,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('purchases/{purchase}', [PurchaseController::class, 'destroy']);
 
         // Milestone 2 — Inventory
+        // Module 05 — Locations & stock transfers
+        Route::get('locations', [LocationController::class, 'index']);
+        Route::post('locations', [LocationController::class, 'store']);
+        Route::put('locations/{location}', [LocationController::class, 'update']);
+        Route::delete('locations/{location}', [LocationController::class, 'destroy']);
+        Route::get('transfers/form-data', [TransferController::class, 'formData']);
+        Route::get('transfers', [TransferController::class, 'index']);
+        Route::post('transfers', [TransferController::class, 'store']);
+        Route::get('transfers/{stockTransfer}', [TransferController::class, 'show']);
+        Route::post('transfers/{stockTransfer}/dispatch', [TransferController::class, 'dispatchTransfer']);
+        Route::post('transfers/{stockTransfer}/receive', [TransferController::class, 'receive']);
+        Route::delete('transfers/{stockTransfer}', [TransferController::class, 'destroy']);
+        Route::get('inventory/by-location', [InventoryController::class, 'byLocation']);
+
         Route::get('inventory/stock', [InventoryController::class, 'stock']);
         Route::get('inventory/alerts', [InventoryController::class, 'alerts']);
         Route::get('inventory/ledger', [InventoryController::class, 'ledger']);

@@ -74,6 +74,14 @@ class InventoryController extends Controller
         return $this->ok($this->inventory->movement($company->id, $days));
     }
 
+    public function byLocation(Request $request, \App\Services\LocationStockService $locations): JsonResponse
+    {
+        $company = $this->allow($request);
+        $locationId = $request->query('location_id') ?: null;
+
+        return $this->ok(['balances' => $locations->balances($company->id, $locationId)]);
+    }
+
     private function allow(Request $request)
     {
         $company = $request->attributes->get('company');

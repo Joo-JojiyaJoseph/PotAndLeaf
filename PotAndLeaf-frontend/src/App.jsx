@@ -22,6 +22,11 @@ import SaleForm from './pages/sales/SaleForm';
 import SaleDetail from './pages/sales/SaleDetail';
 import PaymentsList from './pages/payments/PaymentsList';
 import ReceiptsList from './pages/receipts/ReceiptsList';
+import CommissionList from './pages/commission/CommissionList';
+import TransfersList from './pages/transfers/TransfersList';
+import TransferForm from './pages/transfers/TransferForm';
+import TransferDetail from './pages/transfers/TransferDetail';
+import LocationsList from './pages/locations/LocationsList';
 import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import PurchaseDetail from './pages/purchases/PurchaseDetail';
@@ -70,6 +75,11 @@ export default function App() {
           <Route path="sales/:id" element={<SaleDetail />} />
           <Route path="payments" element={<PaymentsList />} />
           <Route path="receipts" element={<ReceiptsList />} />
+          <Route path="commission" element={<CommissionList />} />
+          <Route path="transfers" element={<TransfersList />} />
+          <Route path="transfers/new" element={<TransferForm />} />
+          <Route path="transfers/:id" element={<TransferDetail />} />
+          <Route path="locations" element={<LocationsList />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

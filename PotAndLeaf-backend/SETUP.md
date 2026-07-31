@@ -314,3 +314,61 @@ customer's outstanding at confirm; receipts draw it down.
 Permissions `receipts.view/create/delete` (seeded to Manager + Cashier). Endpoints:
 `/customer-receipts` (+ `form-data`, `receivables`, `DELETE`). Re-run
 `php artisan migrate:fresh --seed` (new table `customer_receipts`).
+
+---
+
+## Commission (Module 07)
+
+Staff commission computed from the confirmed sales each user billed (attributed via
+the sale's creator).
+- **Rules tab** — per-staff rule: base % of their sales, a monthly sales target, and a
+  flat bonus paid when the target is met.
+- **Payouts tab** — pick a staff member + month; the system **computes live** from that
+  month's billed sales (sales × base %, plus bonus if the target was hit) and shows the
+  breakdown. Record the payout (amount editable) as paid or draft; one payout per
+  staff+month. Delete to redo.
+
+Permissions `commission.view / commission.manage / commission.pay` (seeded to Manager).
+Endpoints: `/commission/rules`, `/commission/compute`, `/commission/payouts`,
+`/commission/form-data`. Re-run `php artisan migrate:fresh --seed` (new tables
+`commission_rules`, `commission_payouts`).
+
+---
+
+## Per-location stock + Stock Transfer (Module 05)
+
+Stock now has a **location dimension**, added *additively* so nothing already working
+breaks: company `current_stock` stays the source of truth for totals, and a new
+per-location layer tracks where that stock physically sits.
+
+- **Locations master** — godowns and shops per company (seeded: Main Godown [default]
+  + Front Shop). Managed under Setup → Locations.
+- **Confirmed purchases** now also credit the chosen location (default if none), so
+  locations have real balances to move.
+- **Stock Transfer** — draft → **dispatch** (removes from source, stock goes *in transit*)
+  → **receive** (accepted qty lands at destination; any shortfall returns to source).
+  Cancel returns in-transit stock to source. Guarded against overselling the source.
+- **Inventory → By location** tab shows on-hand quantities grouped by location.
+
+Permissions `transfers.view/create/dispatch/receive/delete` and `locations.view/manage`
+(seeded to Manager; Godown Staff gets transfers + locations view). Endpoints:
+`/locations`, `/transfers` (+ `form-data`, `{id}/dispatch`, `{id}/receive`, `DELETE`),
+`/inventory/by-location`. Re-run `php artisan migrate:fresh --seed` (new tables
+`locations`, `location_stock`, `stock_transfers`, `stock_transfer_items`; purchases gain
+a nullable `location_id`).
+
+### Honest scope note
+Sales still post stock at company level only (not yet decremented per location) — wiring
+POS to a location is a small follow-up. In-transit is modelled inside the transfer
+workflow; a dedicated in-transit inventory bucket view can build on `location_stock`.
+
+---
+
+## Fix — supplier_payments foreign key (errno 150)
+
+If an earlier copy failed on `migrate` with *"Can't create table supplier_payments
+(errno: 150 Foreign key constraint is incorrectly formed)"*: `suppliers.id` is a UUID,
+so `supplier_payments.supplier_id` must be `foreignUuid`, not `foreignId` (bigint). This
+build corrects it. Re-run `php artisan migrate:fresh --seed`. (All other new tables were
+already correctly typed — `foreignUuid` for UUID tables, `foreignId` only for the bigint
+`companies` and `users`.)
