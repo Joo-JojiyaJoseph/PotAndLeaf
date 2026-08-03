@@ -19,6 +19,11 @@ class RentalResource extends JsonResource
             'rental_no'         => $this->rental_no,
             'customer_id'       => $this->customer_id,
             'customer_name'     => $this->customer?->name,
+            'company'           => $this->whenLoaded('company', fn () => [
+                'name' => $this->company->name, 'legal_name' => $this->company->legal_name,
+                'gst_number' => $this->company->gst_number, 'address' => $this->company->address,
+                'phone' => $this->company->phone, 'state' => $this->company->state, 'state_code' => $this->company->state_code,
+            ]),
             'start_date'        => optional($this->start_date)->toDateString(),
             'expected_end_date' => optional($this->expected_end_date)->toDateString(),
             'billing_cycle'     => $this->billing_cycle,

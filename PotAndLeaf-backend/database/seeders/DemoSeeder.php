@@ -169,6 +169,31 @@ class DemoSeeder extends Seeder
             'period_to'   => now()->toDateString(),
         ], $admin?->id);
 
+        // --- Purchase order (draft) + advance order (booked) for demo ---
+        if ($suppliers->count() >= 1 && $products->count() >= 1) {
+            app(\App\Services\PurchaseOrderService::class)->create($company->id, [
+                'supplier_id'   => $suppliers[0]->id,
+                'po_date'       => now()->subDays(3)->toDateString(),
+                'expected_date' => now()->addDays(4)->toDateString(),
+                'items'         => [[
+                    'product_id' => $products[0]->id, 'qty' => 20,
+                    'rate' => (float) $products[0]->cost_price, 'gst_rate' => (float) $products[0]->gst_rate,
+                ]],
+            ], $admin?->id);
+        }
+        if ($customers->count() >= 1 && $products->count() >= 2) {
+            app(\App\Services\AdvanceOrderService::class)->create($company->id, [
+                'customer_id'    => $customers[0]->id,
+                'order_date'     => now()->subDays(2)->toDateString(),
+                'expected_date'  => now()->addDays(10)->toDateString(),
+                'advance_amount' => 500,
+                'items'          => [[
+                    'product_id' => $products[1]->id, 'qty' => 10,
+                    'rate' => (float) $products[1]->retail_price, 'gst_rate' => (float) $products[1]->gst_rate,
+                ]],
+            ], $admin?->id);
+        }
+
         Auth::logout();
     }
 }

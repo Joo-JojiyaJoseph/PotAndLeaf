@@ -236,3 +236,92 @@ export function printGRN(purchase) {
   w.document.write(html);
   w.document.close();
 }
+
+export function printRentalInvoice(rental, invoice) {
+  const c = rental.company ?? {};
+  const cycles = invoice.cycles ?? 1;
+  const rows = (rental.items ?? []).map((it, i) => {
+    const qty = it.outstanding_qty != null ? it.outstanding_qty : it.qty;
+    const line = qty * (it.rate_per_cycle || 0) * cycles;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td class="l">${esc(it.product_name)}</td>
+      <td>${qty}</td>
+      <td class="r">${money(it.rate_per_cycle)}</td>
+      <td>${cycles}</td>
+      <td class="r">${money(line)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Rental invoice ${esc(invoice.invoice_no)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #1a1a1a; margin: 0; padding: 24px; font-size: 12px; }
+    .inv { max-width: 800px; margin: 0 auto; }
+    .top { display: flex; justify-content: space-between; border-bottom: 2px solid #2f5233; padding-bottom: 12px; }
+    .co { font-size: 18px; font-weight: 700; color: #2f5233; }
+    .muted { color: #666; font-size: 11px; line-height: 1.5; }
+    .title { text-align: right; }
+    .title h1 { margin: 0; font-size: 18px; letter-spacing: 1px; color: #2f5233; }
+    .meta { margin-top: 4px; font-size: 11px; }
+    .parties { display: flex; justify-content: space-between; margin: 16px 0; gap: 24px; }
+    .box { flex: 1; }
+    .lbl { text-transform: uppercase; font-size: 9px; letter-spacing: .6px; color: #999; margin-bottom: 3px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { padding: 6px 8px; text-align: center; border-bottom: 1px solid #eee; }
+    th { background: #f4f7f4; font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: #555; }
+    td.l { text-align: left; } td.r { text-align: right; }
+    .totals { margin-top: 12px; margin-left: auto; width: 260px; }
+    .totals td { border: 0; padding: 3px 8px; }
+    .grand td { border-top: 2px solid #2f5233; font-weight: 700; font-size: 14px; padding-top: 6px; }
+    .words { margin-top: 12px; font-size: 11px; }
+    .foot { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .sign { text-align: center; font-size: 11px; }
+    .sign .line { margin-top: 34px; border-top: 1px solid #999; padding-top: 3px; }
+    @media print { body { padding: 0; } .noprint { display: none; } }
+    .btn { background: #2f5233; color: #fff; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  </style></head><body>
+  <div class="noprint" style="max-width:800px;margin:0 auto 16px;text-align:right"><button class="btn" onclick="window.print()">Print / Save as PDF</button></div>
+  <div class="inv">
+    <div class="top">
+      <div>
+        <div class="co">${esc(c.name || 'Company')}</div>
+        <div class="muted">${c.address ? esc(c.address) + '<br>' : ''}${c.gst_number ? '<b>GSTIN: ' + esc(c.gst_number) + '</b>' : ''}</div>
+      </div>
+      <div class="title">
+        <h1>RENTAL INVOICE</h1>
+        <div class="meta"><b>${esc(invoice.invoice_no)}</b></div>
+        <div class="meta">Ref: ${esc(rental.rental_no)}</div>
+      </div>
+    </div>
+
+    <div class="parties">
+      <div class="box"><div class="lbl">Bill to</div><div><b>${esc(rental.customer_name)}</b></div></div>
+      <div class="box" style="text-align:right"><div class="lbl">Period</div><div>${esc(invoice.period_from)} – ${esc(invoice.period_to)}</div><div class="muted">${cycles} × ${esc(rental.billing_cycle)}</div></div>
+    </div>
+
+    <table>
+      <thead><tr><th>#</th><th class="l">Plant</th><th>Qty</th><th class="r">Rate / cycle</th><th>Cycles</th><th class="r">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <table class="totals">
+      <tr class="grand"><td>Total due</td><td class="r">${money(invoice.amount)}</td></tr>
+    </table>
+
+    <div class="words"><span class="lbl">Amount in words</span><br><b>${esc(amountInWordsINR(invoice.amount))}</b></div>
+
+    <div class="foot">
+      <div class="muted">This is a computer-generated rental invoice.</div>
+      <div class="sign">For ${esc(c.name || 'Company')}<div class="line">Authorised Signatory</div></div>
+    </div>
+  </div>
+  <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 300); };</script>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=1000');
+  if (!w) return;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}

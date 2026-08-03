@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ProductionController;
 use App\Http\Controllers\Api\RentalController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MasterDataController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\AdvanceOrderController;
@@ -151,6 +152,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('purchase-orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send']);
         Route::post('purchase-orders/{purchaseOrder}/convert', [PurchaseOrderController::class, 'convert']);
         Route::delete('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
+
+        // Product master data (categories / brands / units)
+        Route::get('masters/{type}', [MasterDataController::class, 'index'])->whereIn('type', ['categories', 'brands', 'units']);
+        Route::post('masters/{type}', [MasterDataController::class, 'store'])->whereIn('type', ['categories', 'brands', 'units']);
+        Route::put('masters/{type}/{id}', [MasterDataController::class, 'update'])->whereIn('type', ['categories', 'brands', 'units']);
+        Route::delete('masters/{type}/{id}', [MasterDataController::class, 'destroy'])->whereIn('type', ['categories', 'brands', 'units']);
 
         // Module 11 — Reports
         Route::get('reports/dashboard', [ReportController::class, 'dashboard']);

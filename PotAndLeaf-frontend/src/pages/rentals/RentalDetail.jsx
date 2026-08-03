@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircleIcon, XCircleIcon, ArrowUturnLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ArrowUturnLeftIcon, PlusIcon, TrashIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
+import { printRentalInvoice } from '../../lib/invoicePrint';
 
 const tone = { draft: 'inactive', active: 'active', returned: 'approved', cancelled: 'blocked' };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -124,6 +125,7 @@ export default function RentalDetail() {
                   <td className="py-2 pl-3">
                     <div className="flex items-center justify-end gap-1.5">
                       {inv.status !== 'paid' && r.can?.bill && <Button size="sm" variant="outline" onClick={() => payM.mutate(inv.id)} disabled={payM.isPending}>Mark paid</Button>}
+                      <button onClick={() => printRentalInvoice(r, inv)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" title="Print"><PrinterIcon className="size-4" /></button>
                       {r.can?.bill && <button onClick={() => delInvM.mutate(inv.id)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger"><TrashIcon className="size-4" /></button>}
                     </div>
                   </td>

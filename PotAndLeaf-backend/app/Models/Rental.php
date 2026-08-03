@@ -46,6 +46,11 @@ class Rental extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function scopeForCompany($query, int|string $companyId)
     {
         return $query->where('company_id', $companyId);

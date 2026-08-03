@@ -12,6 +12,7 @@ import CompaniesList from './pages/companies/CompaniesList';
 import UsersList from './pages/users/UsersList';
 import UserDetail from './pages/users/UserDetail';
 import RolesList from './pages/roles/RolesList';
+import MastersPage from './pages/masters/MastersPage';
 import BulkSplitsList from './pages/bulkSplits/BulkSplitsList';
 import BulkSplitForm from './pages/bulkSplits/BulkSplitForm';
 import BulkSplitDetail from './pages/bulkSplits/BulkSplitDetail';
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="users" element={<UsersList />} />
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="roles" element={<RolesList />} />
+          <Route path="masters" element={<MastersPage />} />
           <Route path="bulk-splits" element={<BulkSplitsList />} />
           <Route path="bulk-splits/new" element={<BulkSplitForm />} />
           <Route path="bulk-splits/:id" element={<BulkSplitDetail />} />

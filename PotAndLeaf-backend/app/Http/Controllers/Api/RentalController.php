@@ -60,7 +60,7 @@ class RentalController extends Controller
         $this->allow($request, 'rental.view');
         $this->sameCompany($request, $rental);
 
-        return $this->ok(new RentalResource($rental->load(['items', 'invoices', 'customer:id,name,type'])));
+        return $this->ok(new RentalResource($rental->load(['items', 'invoices', 'customer:id,name,type', 'company:id,name,legal_name,gst_number,address,phone,state,state_code'])));
     }
 
     public function activate(Request $request, Rental $rental): JsonResponse

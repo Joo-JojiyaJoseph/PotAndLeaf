@@ -60,6 +60,7 @@ const GROUPS = [
       { key: 'receipts', label: 'Receipts', to: '/receipts', icon: ReceiptRefundIcon },
       { key: 'commission', label: 'Commission', to: '/commission', icon: CurrencyRupeeIcon },
       { key: 'products', label: 'Products', to: '/products', icon: TagIcon },
+      { key: 'masters', label: 'Masters', to: '/masters', icon: TagIcon },
       { key: 'locations', label: 'Locations', to: '/locations', icon: MapPinIcon },
       { key: 'roles', label: 'Roles', to: '/roles', icon: ShieldCheckIcon },
       { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },

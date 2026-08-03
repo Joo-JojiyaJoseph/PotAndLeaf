@@ -13,7 +13,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('product_supplier', function (Blueprint $table) {
-            $table->uuid('id')->primary();
             $table->uuid('product_id');
             $table->uuid('supplier_id');
             $table->decimal('supplier_price', 15, 2)->default(0);
@@ -22,7 +21,7 @@ return new class extends Migration
 
             $table->foreign('product_id')->references('id')->on('products')->cascadeOnDelete();
             $table->foreign('supplier_id')->references('id')->on('suppliers')->cascadeOnDelete();
-            $table->unique(['product_id', 'supplier_id']);
+            $table->primary(['product_id', 'supplier_id']);
         });
     }
 

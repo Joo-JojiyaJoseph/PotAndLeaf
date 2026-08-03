@@ -530,3 +530,77 @@ Customer pre-bookings against future stock — the customer-side mirror of purch
 Permissions `advance.view / create / fulfill / delete` (seeded to Manager). Endpoints under
 `/advance-orders` (+ `form-data`, `{id}/fulfill`). New tables `advance_orders`,
 `advance_order_items`. This is the last planning module from the work-effort plan.
+
+---
+
+## Rental-bill print + demo rows for PO / advance orders
+
+- **Rental invoice print** — each invoice row on a rental's detail page now has a print
+  button that opens a rental bill (company header with GSTIN, customer, billing period and
+  cycles, plants with per-cycle rate, total due, amount in words) to Save-as-PDF. Reuses
+  `src/lib/invoicePrint.js`; the rental detail response now carries the company header block.
+- **Demo seed** — now also creates a draft purchase order and a booked advance order, so
+  those two modules show live data on a fresh seed (guarded on having enough suppliers /
+  products / customers; record-only, no stock movement).
+
+Re-run `php artisan migrate:fresh --seed` (no new tables this time — just seed content).
+
+---
+
+## Fix — missing users table migration (makes the backend self-contained)
+
+A defensive whole-repo audit turned up that the backend had **no `create_users_table`
+migration** — 48 migrations, many with foreign keys to `users` and one altering it, but
+nothing creating it. An existing project (like the dev machine) still migrated because
+Laravel's default users migration was already there from `laravel new`; but a fresh unzip
+would fail. Added the canonical `0001_01_01_000000_create_users_table.php` (users +
+password_reset_tokens + sessions), dated to run first. It uses Laravel's standard filename,
+so if your project already has it, this simply overwrites it with identical content — no
+duplicate-table error. **Re-run `php artisan migrate:fresh --seed`.**
+
+### Defensive audit suite (now run each build)
+Static cross-checks for the class of bugs that `php -l` / esbuild can't see:
+1. Model `$fillable`/`$casts` columns all exist in the table migration — clean.
+2. Every route's `[Controller::class, 'method']` resolves to a real method — clean.
+3. Permission strings used in code all exist in the registry (incl. crud-generated) — clean.
+4. Every FK target table exists — clean.
+5. Every FK target table is created in an earlier migration than its use — clean.
+Plus the existing FK-type audit and audit-column audit. All green.
+
+---
+
+## Product masters (categories / brands / units)
+
+These lookup tables existed and were seeded, and products referenced them, but there was no
+screen to manage them. Added a **Masters** area (sidebar) with three tabs — Categories,
+Brands, Units — each a company-scoped list with add / edit / delete. Categories support an
+optional parent; units carry a short name (kg, pc). One type-parameterized
+`MasterDataController` backs all three at `/masters/{type}` (categories|brands|units), using
+the `categories.* / brands.* / units.*` permissions that were already in the registry (now
+also granted to Manager). No new tables — existing seeded lookups appear right away.
+
+---
+
+## Fix — SQL error adding a product with a supplier (Step 1 of the full brief)
+
+**Root cause.** The `product_supplier` pivot was defined with `$table->uuid('id')->primary()`
+— a non-nullable UUID primary key with no default. Eloquent's `belongsToMany(...)->sync()`
+(used when a product's suppliers are saved) inserts pivot rows **without** a value for a
+custom `id` column, so MySQL in strict mode rejects the insert with
+`Field 'id' doesn't have a default value`. It only surfaces when a product is saved **with a
+supplier** — `ProductSeeder` doesn't attach suppliers, which is why `migrate:fresh --seed`
+never hit it.
+
+**Fix.** Made the pivot consistent with the other two pivots in the schema (`company_user`,
+`role_user`), which use a **composite primary key** and no surrogate id — and which work
+correctly in the seed. `product_supplier` now uses `primary(['product_id','supplier_id'])`
+with no `id` column, so `sync()` inserts cleanly.
+
+**Verification.** Schema lints clean; the FK-type audit (including raw `foreign()` refs)
+passes. A live MySQL insert test couldn't be run in the build sandbox (no DB driver), but the
+shape is now identical to the two pivots already proven working by your successful seed.
+**Re-run `php artisan migrate:fresh --seed`**, then add a product with a supplier to confirm.
+
+Note on **multiple product photos**: the data layer already supports a gallery — `products.images`
+is a JSON array and the store/update requests accept `images[]`. What's not yet built is the
+binary upload endpoint + gallery UI (see the gap list shared in chat).
