@@ -476,3 +476,57 @@ a clean A4 layout and auto-triggers the browser print dialog (choose "Save as PD
 To support the headers, the sale/purchase detail responses now include a small company
 block (name, GSTIN, address, state). No new tables or dependencies. A rental-bill print
 can reuse the same `src/lib/invoicePrint.js` helpers if wanted.
+
+---
+
+## Bulk barcode label sheets
+
+Print a grid of barcode labels for shelf/stock labelling — client-side, using the
+existing Code128 generator. From **Products → Labels**: set how many labels to print per
+product (quick actions: 1 each, match stock, clear), choose columns (2–5), and print. Each
+label shows the product name, barcode, SKU and price, laid out to a printable sheet that
+saves to PDF. No new backend — reads products' existing barcodes.
+
+---
+
+## Fix — rental_invoices audit column
+
+The `rental_invoices` table was missing the `updated_by` column that the shared audit
+trait stamps on every save, which broke `migrate:fresh --seed` at the DemoSeeder. Added
+`updated_by` to the migration. **Re-run `php artisan migrate:fresh --seed`.** An
+audit-column check (every model using the audit trait must have created_by/updated_by, plus
+deleted_by if soft-deletable) now runs alongside the FK audit each build.
+
+## Purchase orders / reorder (Module 09)
+
+Order stock from suppliers before it arrives, driven by reorder levels.
+- **Reorder suggestions** — the PO form's "Load reorder suggestions" button pulls every
+  product at or below its reorder level, pre-filling lines with a suggested top-up quantity
+  (to ~2× reorder level), the product's cost as rate, and its GST — attaching the product's
+  preferred supplier where set.
+- **Purchase order** — supplier + item lines (qty, rate, GST); the form shows a running
+  estimated total. Statuses: draft → sent → received / cancelled.
+- **Convert to GRN** — turns an open PO into a **draft purchase** (reusing the existing
+  purchase pipeline) and jumps to it, so receiving is just confirming the GRN. The PO then
+  links to its GRN.
+
+Permissions `po.view / create / send / convert / delete` (seeded to Manager). Endpoints
+under `/purchase-orders` (+ `form-data`, `suggestions`, `{id}/send`, `{id}/convert`). New
+tables `purchase_orders`, `purchase_order_items`.
+
+---
+
+## Advance orders (Module 10)
+
+Customer pre-bookings against future stock — the customer-side mirror of purchase orders.
+- **Booking** — customer + item lines (qty, rate defaulting to retail, GST) with a running
+  estimated total, plus an optional **advance paid** amount. Statuses: booked → fulfilled /
+  cancelled. The detail shows advance vs balance.
+- **Fulfil → sale** — turns a booking into a **draft credit sale** (through the existing
+  sale pipeline), counting the advance as amount already paid so the balance lands on the
+  customer's receivables when the sale is confirmed. Jumps to the created sale; the booking
+  then links to it.
+
+Permissions `advance.view / create / fulfill / delete` (seeded to Manager). Endpoints under
+`/advance-orders` (+ `form-data`, `{id}/fulfill`). New tables `advance_orders`,
+`advance_order_items`. This is the last planning module from the work-effort plan.

@@ -23,6 +23,8 @@ import {
   UserGroupIcon,
   UsersIcon,
   BuildingOffice2Icon,
+  ClipboardDocumentListIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { classNames } from '../lib/format';
@@ -63,6 +65,8 @@ const GROUPS = [
       { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },
       { key: 'companies', label: 'Companies', to: '/companies', icon: BuildingOffice2Icon, superAdmin: true },
       { key: 'reports', label: 'Reports', to: '/reports', icon: ChartBarIcon },
+      { key: 'purchase-orders', label: 'Purchase Orders', to: '/purchase-orders', icon: ClipboardDocumentListIcon },
+      { key: 'advance-orders', label: 'Advance Orders', to: '/advance-orders', icon: CalendarDaysIcon },
       { key: 'settings', label: 'Settings', icon: Cog6ToothIcon, soon: true },
     ],
   },

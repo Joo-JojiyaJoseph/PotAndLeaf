@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\AdvanceOrderController;
+use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PurchaseReturnController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierPaymentController;
@@ -131,6 +133,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('rentals/{rental}', [RentalController::class, 'destroy']);
         Route::post('rental-invoices/{rentalInvoice}/paid', [RentalController::class, 'markInvoicePaid']);
         Route::delete('rental-invoices/{rentalInvoice}', [RentalController::class, 'deleteInvoice']);
+
+        // Module 10 — Advance orders (customer pre-bookings)
+        Route::get('advance-orders/form-data', [AdvanceOrderController::class, 'formData']);
+        Route::get('advance-orders', [AdvanceOrderController::class, 'index']);
+        Route::post('advance-orders', [AdvanceOrderController::class, 'store']);
+        Route::get('advance-orders/{advanceOrder}', [AdvanceOrderController::class, 'show']);
+        Route::post('advance-orders/{advanceOrder}/fulfill', [AdvanceOrderController::class, 'fulfill']);
+        Route::delete('advance-orders/{advanceOrder}', [AdvanceOrderController::class, 'destroy']);
+
+        // Module 09 — Purchase orders / reorder
+        Route::get('purchase-orders/form-data', [PurchaseOrderController::class, 'formData']);
+        Route::get('purchase-orders/suggestions', [PurchaseOrderController::class, 'suggestions']);
+        Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::get('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show']);
+        Route::post('purchase-orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'send']);
+        Route::post('purchase-orders/{purchaseOrder}/convert', [PurchaseOrderController::class, 'convert']);
+        Route::delete('purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'destroy']);
 
         // Module 11 — Reports
         Route::get('reports/dashboard', [ReportController::class, 'dashboard']);

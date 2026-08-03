@@ -36,6 +36,19 @@ class PermissionRegistry
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
             'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Advance Orders' => [
+                'advance.view'    => 'View advance orders',
+                'advance.create'  => 'Create advance orders',
+                'advance.fulfill' => 'Fulfil advance orders',
+                'advance.delete'  => 'Cancel advance orders',
+            ],
+            'Purchase Orders' => [
+                'po.view'    => 'View purchase orders',
+                'po.create'  => 'Create purchase orders',
+                'po.send'    => 'Mark POs as sent',
+                'po.convert' => 'Convert POs to GRNs',
+                'po.delete'  => 'Cancel purchase orders',
+            ],
             'Reports' => [
                 'reports.view' => 'View reports & dashboard',
             ],

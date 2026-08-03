@@ -34,6 +34,12 @@ import RentalForm from './pages/rentals/RentalForm';
 import RentalDetail from './pages/rentals/RentalDetail';
 import ReportsPage from './pages/reports/ReportsPage';
 import BarcodeLabelsPage from './pages/products/BarcodeLabelsPage';
+import PurchaseOrdersList from './pages/purchaseOrders/PurchaseOrdersList';
+import PurchaseOrderForm from './pages/purchaseOrders/PurchaseOrderForm';
+import PurchaseOrderDetail from './pages/purchaseOrders/PurchaseOrderDetail';
+import AdvanceOrdersList from './pages/advanceOrders/AdvanceOrdersList';
+import AdvanceOrderForm from './pages/advanceOrders/AdvanceOrderForm';
+import AdvanceOrderDetail from './pages/advanceOrders/AdvanceOrderDetail';
 import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import PurchaseDetail from './pages/purchases/PurchaseDetail';
@@ -94,6 +100,12 @@ export default function App() {
           <Route path="rentals/new" element={<RentalForm />} />
           <Route path="rentals/:id" element={<RentalDetail />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="purchase-orders" element={<PurchaseOrdersList />} />
+          <Route path="purchase-orders/new" element={<PurchaseOrderForm />} />
+          <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />
+          <Route path="advance-orders" element={<AdvanceOrdersList />} />
+          <Route path="advance-orders/new" element={<AdvanceOrderForm />} />
+          <Route path="advance-orders/:id" element={<AdvanceOrderDetail />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

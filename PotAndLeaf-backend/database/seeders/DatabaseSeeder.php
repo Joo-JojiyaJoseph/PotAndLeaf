@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             SupplierSeeder::class,     // sample suppliers per company
             ProductSeeder::class,      // sample products per company
             CustomerSeeder::class,
-            // DemoSeeder::class,         // live demo activity (purchases, sales, payments) — must run last
+            DemoSeeder::class,         // live demo activity (purchases, sales, payments) — must run last
         ]);
     }
 }
