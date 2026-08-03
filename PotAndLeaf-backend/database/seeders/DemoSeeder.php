@@ -154,6 +154,21 @@ class DemoSeeder extends Seeder
             );
         }
 
+        // --- Plant rental: one active rental + an invoice ---
+        $rentalSvc = app(\App\Services\RentalService::class);
+        $rental = $rentalSvc->create($company->id, [
+            'customer_id'   => $customers[0]->id,
+            'start_date'    => now()->subDays(15)->toDateString(),
+            'billing_cycle' => 'monthly',
+            'deposit'       => 1000,
+            'items'         => [['product_id' => $products[0]->id, 'qty' => 5, 'rate_per_cycle' => 200]],
+        ], $admin?->id);
+        $rentalSvc->activate($rental, $admin?->id);
+        $rentalSvc->generateInvoice($company->id, $rental, [
+            'period_from' => now()->subDays(15)->toDateString(),
+            'period_to'   => now()->toDateString(),
+        ], $admin?->id);
+
         Auth::logout();
     }
 }

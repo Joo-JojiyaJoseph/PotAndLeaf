@@ -1,10 +1,11 @@
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { Badge, Button, Card } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
+import { printInvoice } from '../../lib/invoicePrint';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
@@ -34,6 +35,7 @@ export default function SaleDetail() {
         subtitle={`${s.customer_name} · ${formatDate(s.sale_date)}`}
         backTo="/sales"
         actions={<>
+          <Button variant="outline" size="sm" onClick={() => printInvoice(s)}><PrinterIcon className="size-4" /> Print / PDF</Button>
           <Badge tone={statusTone[s.status] ?? 'default'}>{s.status}</Badge>
           {s.can?.cancel && <Button variant="ghost" size="sm" onClick={() => cancelM.mutate()} disabled={cancelM.isPending}><XCircleIcon className="size-4" /> Cancel</Button>}
           {s.can?.confirm && <Button size="sm" onClick={() => confirmM.mutate()} disabled={confirmM.isPending}><CheckCircleIcon className="size-4" /> Confirm</Button>}

@@ -36,6 +36,17 @@ class PermissionRegistry
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
             'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Reports' => [
+                'reports.view' => 'View reports & dashboard',
+            ],
+            'Plant Rental' => [
+                'rental.view'     => 'View rentals',
+                'rental.create'   => 'Create rentals',
+                'rental.activate' => 'Activate rentals (issue stock)',
+                'rental.return'   => 'Record rental returns',
+                'rental.bill'     => 'Generate rental invoices',
+                'rental.delete'   => 'Cancel rentals',
+            ],
             'Production' => [
                 'production.view'       => 'View production & BOMs',
                 'production.manage_bom' => 'Manage bills of materials',

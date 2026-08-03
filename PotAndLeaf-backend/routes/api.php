@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\CommissionController;
 use App\Http\Controllers\Api\CustomerReceiptController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ProductionController;
+use App\Http\Controllers\Api\RentalController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ProductController;
@@ -118,6 +120,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('purchases/{purchase}', [PurchaseController::class, 'destroy']);
 
         // Milestone 2 — Inventory
+        // Module 06 — Plant rental
+        Route::get('rentals/form-data', [RentalController::class, 'formData']);
+        Route::get('rentals', [RentalController::class, 'index']);
+        Route::post('rentals', [RentalController::class, 'store']);
+        Route::get('rentals/{rental}', [RentalController::class, 'show']);
+        Route::post('rentals/{rental}/activate', [RentalController::class, 'activate']);
+        Route::post('rentals/{rental}/return', [RentalController::class, 'returnItems']);
+        Route::post('rentals/{rental}/invoices', [RentalController::class, 'generateInvoice']);
+        Route::delete('rentals/{rental}', [RentalController::class, 'destroy']);
+        Route::post('rental-invoices/{rentalInvoice}/paid', [RentalController::class, 'markInvoicePaid']);
+        Route::delete('rental-invoices/{rentalInvoice}', [RentalController::class, 'deleteInvoice']);
+
+        // Module 11 — Reports
+        Route::get('reports/dashboard', [ReportController::class, 'dashboard']);
+
         // Module 02 — Production / BOM
         Route::get('production/form-data', [ProductionController::class, 'formData']);
         Route::get('production/boms', [ProductionController::class, 'boms']);

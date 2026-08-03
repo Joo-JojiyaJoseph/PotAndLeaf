@@ -78,7 +78,7 @@ class PurchaseController extends Controller
         $this->allow($request, 'purchases.view');
         $this->sameCompany($request, $purchase);
 
-        return $this->ok(new PurchaseResource($purchase->load(['supplier', 'items'])));
+        return $this->ok(new PurchaseResource($purchase->load(['supplier', 'items', 'company:id,name,legal_name,gst_number,address,phone,state,state_code'])));
     }
 
     public function update(UpdatePurchaseRequest $request, Purchase $purchase): JsonResponse

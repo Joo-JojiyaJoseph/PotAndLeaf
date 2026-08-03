@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircleIcon, PencilSquareIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, PencilSquareIcon, XCircleIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { Badge, Button, Card } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
+import { printGRN } from '../../lib/invoicePrint';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
@@ -42,6 +43,7 @@ export default function PurchaseDetail() {
           <>
             <Badge tone={statusTone[p.status] ?? 'default'}>{p.status}</Badge>
             {p.payment_status && p.payment_status !== 'n/a' && <Badge tone={p.payment_status === 'paid' ? 'active' : p.payment_status === 'partial' ? 'warning' : 'blocked'}>{p.payment_status}</Badge>}
+            <Button variant="outline" size="sm" onClick={() => printGRN(p)}><PrinterIcon className="size-4" /> Print GRN</Button>
             {p.can?.update && <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/${id}/edit`)}><PencilSquareIcon className="size-4" /> Edit</Button>}
             {p.can?.cancel && <Button variant="ghost" size="sm" onClick={() => cancelM.mutate()} disabled={cancelM.isPending}><XCircleIcon className="size-4" /> Cancel</Button>}
             {p.can?.confirm && <Button size="sm" onClick={() => confirmM.mutate()} disabled={confirmM.isPending}><CheckCircleIcon className="size-4" /> Confirm</Button>}

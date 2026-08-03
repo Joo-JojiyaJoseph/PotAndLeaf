@@ -29,6 +29,11 @@ import TransferDetail from './pages/transfers/TransferDetail';
 import LocationsList from './pages/locations/LocationsList';
 import ProductionList from './pages/production/ProductionList';
 import ProductionOrderDetail from './pages/production/ProductionOrderDetail';
+import RentalsList from './pages/rentals/RentalsList';
+import RentalForm from './pages/rentals/RentalForm';
+import RentalDetail from './pages/rentals/RentalDetail';
+import ReportsPage from './pages/reports/ReportsPage';
+import BarcodeLabelsPage from './pages/products/BarcodeLabelsPage';
 import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import PurchaseDetail from './pages/purchases/PurchaseDetail';
@@ -50,6 +55,7 @@ export default function App() {
           <Route path="suppliers" element={<SuppliersList />} />
           <Route path="suppliers/:id" element={<SupplierDetail />} />
           <Route path="products" element={<ProductsList />} />
+          <Route path="products/labels" element={<BarcodeLabelsPage />} />
           <Route path="products/new" element={<ProductForm />} />
           <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="purchases" element={<PurchasesList />} />
@@ -84,6 +90,10 @@ export default function App() {
           <Route path="locations" element={<LocationsList />} />
           <Route path="production" element={<ProductionList />} />
           <Route path="production/orders/:id" element={<ProductionOrderDetail />} />
+          <Route path="rentals" element={<RentalsList />} />
+          <Route path="rentals/new" element={<RentalForm />} />
+          <Route path="rentals/:id" element={<RentalDetail />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

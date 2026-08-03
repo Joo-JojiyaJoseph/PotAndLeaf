@@ -20,6 +20,12 @@ class SaleResource extends JsonResource
             'sale_date'     => optional($this->sale_date)->toDateString(),
             'customer_id'   => $this->customer_id,
             'customer_name' => $this->customer_name,
+            'company'       => $this->whenLoaded('company', fn () => [
+                'name' => $this->company->name, 'legal_name' => $this->company->legal_name,
+                'gst_number' => $this->company->gst_number, 'address' => $this->company->address,
+                'phone' => $this->company->phone, 'email' => $this->company->email,
+                'state' => $this->company->state, 'state_code' => $this->company->state_code,
+            ]),
             'customer'      => $this->whenLoaded('customer', fn () => $this->customer ? [
                 'id' => $this->customer->id, 'name' => $this->customer->name, 'type' => $this->customer->type?->value,
             ] : null),

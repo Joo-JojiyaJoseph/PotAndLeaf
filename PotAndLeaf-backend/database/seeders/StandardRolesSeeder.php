@@ -20,7 +20,7 @@ class StandardRolesSeeder extends Seeder
         $all = Permission::pluck('id', 'name'); // name => id
 
         $roles = [
-            'Manager'      => ['suppliers.', 'products.', 'purchases.', 'inventory.', 'purchase_returns.', 'stock_verifications.', 'bulk_splits.', 'sales.', 'customers.', 'payments.', 'receipts.', 'commission.', 'transfers.', 'locations.', 'production.', 'users.view', 'roles.view'],
+            'Manager'      => ['suppliers.', 'products.', 'purchases.', 'inventory.', 'purchase_returns.', 'stock_verifications.', 'bulk_splits.', 'sales.', 'customers.', 'payments.', 'receipts.', 'commission.', 'transfers.', 'locations.', 'production.', 'rental.', 'reports.', 'users.view', 'roles.view'],
             'Cashier'      => ['products.view', 'inventory.view', 'sales.view', 'sales.create', 'sales.confirm', 'customers.view', 'customers.create', 'receipts.view', 'receipts.create'],
             'Godown Staff' => ['inventory.', 'stock_verifications.', 'transfers.', 'locations.view', 'products.view', 'purchases.view'],
             'Supervisor'   => ['products.view', 'inventory.view', 'stock_verifications.view'],

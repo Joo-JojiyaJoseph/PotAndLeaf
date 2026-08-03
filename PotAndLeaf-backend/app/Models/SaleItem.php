@@ -35,4 +35,9 @@ class SaleItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
 }

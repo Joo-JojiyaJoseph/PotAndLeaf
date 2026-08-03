@@ -45,7 +45,7 @@ const GROUPS = [
     label: 'Commerce',
     items: [
       { key: 'pos', label: 'POS Sales', to: '/sales', icon: CalculatorIcon },
-      { key: 'rental', label: 'Plant Rental', icon: GiftIcon, soon: true },
+      { key: 'rentals', label: 'Plant Rental', to: '/rentals', icon: GiftIcon },
       { key: 'customers', label: 'Customers', to: '/customers', icon: UsersIcon },
       { key: 'loyalty', label: 'Loyalty', icon: SparklesIcon, soon: true },
     ],
@@ -62,7 +62,7 @@ const GROUPS = [
       { key: 'roles', label: 'Roles', to: '/roles', icon: ShieldCheckIcon },
       { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },
       { key: 'companies', label: 'Companies', to: '/companies', icon: BuildingOffice2Icon, superAdmin: true },
-      { key: 'reports', label: 'Reports', icon: ChartBarIcon, soon: true },
+      { key: 'reports', label: 'Reports', to: '/reports', icon: ChartBarIcon },
       { key: 'settings', label: 'Settings', icon: Cog6ToothIcon, soon: true },
     ],
   },

@@ -417,3 +417,62 @@ Permissions `production.view / manage_bom / create / complete / delete` (seeded 
 Manager). Endpoints under `/production` (`form-data`, `boms`, `orders`,
 `orders/{id}/complete`). Re-run `php artisan migrate:fresh --seed` (new tables `boms`,
 `bom_items`, `production_orders`, `production_order_items`).
+
+---
+
+## Plant Rental (Module 06)
+
+Rent plants out on an agreement, with stock movement and periodic billing.
+- **Rental agreement** — customer, location, start/expected-end dates, billing cycle
+  (daily/weekly/monthly), deposit, and rented plant lines (qty + rate per cycle).
+- **Lifecycle** — draft → **activate** (issues the rented stock out of inventory) →
+  **return** (partial or full; brings stock back, closes when all returned). Cancel
+  returns any still-out stock. Guarded against renting more than is in stock.
+- **Billing** — generate an invoice for a period; the system computes billing cycles from
+  the dates and bills (plants still out × rate × cycles), raising the customer's
+  outstanding. Mark paid draws the outstanding back down; deleting an unpaid invoice
+  reverses it.
+- The demo seed adds one active rental with an invoice.
+
+Permissions `rental.view / create / activate / return / bill / delete` (seeded to
+Manager). Endpoints under `/rentals` (+ `form-data`, `{id}/activate`, `{id}/return`,
+`{id}/invoices`) and `/rental-invoices/{id}/paid`. Re-run `php artisan migrate:fresh
+--seed` (new tables `rentals`, `rental_items`, `rental_invoices`).
+
+This completes the domain modules from the work-effort plan: Purchase, Production,
+Inventory, Stock Transfer, Purchase Returns, Stock Count, Bulk Split, Sales/POS,
+Customers, Supplier Payments, Customer Receipts, Commission, and Plant Rental — on
+multi-company + RBAC.
+
+---
+
+## Reports dashboard (Module 11)
+
+A business summary that pulls together every module over a chosen date range
+(7/30/90-day presets or custom).
+- **KPI cards** — sales, purchases, receivables, payables, and stock value.
+- **Sales trend** — a dependency-free inline SVG bar chart of daily confirmed sales.
+- **Top products** and **top customers** by revenue in the range.
+- **Sales by payment mode**, **production** (completed runs + input value), **rentals**
+  (active + invoiced), and a low-stock warning.
+
+Permission `reports.view` (seeded to Manager). Endpoint `/reports/dashboard?from=&to=`
+(defaults to the last 30 days). No new tables — it aggregates existing data, so the demo
+seed already makes it look alive.
+
+---
+
+## Printable invoices & GRNs (PDF export)
+
+Print / Save-as-PDF for the documents a shop actually hands over — done client-side, so
+there's **no server PDF library to install**. Each opens in an isolated print window with
+a clean A4 layout and auto-triggers the browser print dialog (choose "Save as PDF").
+- **Tax invoice** — Print / PDF button on a sale's detail page. Company header with GSTIN,
+  bill-to, line items with HSN + GST split, totals, and **amount in words** (Indian
+  lakh/crore format).
+- **Goods Receipt Note** — Print GRN button on a purchase's detail page: supplier,
+  received items with landed unit cost, and totals.
+
+To support the headers, the sale/purchase detail responses now include a small company
+block (name, GSTIN, address, state). No new tables or dependencies. A rental-bill print
+can reuse the same `src/lib/invoicePrint.js` helpers if wanted.

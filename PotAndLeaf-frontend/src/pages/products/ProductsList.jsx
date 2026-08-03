@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MagnifyingGlassIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PlusIcon, PencilSquareIcon, TrashIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Input, Modal, Spinner } from '../../components/ui';
@@ -39,9 +39,10 @@ export default function ProductsList() {
           <p className="text-sm text-muted">Product master with live stock levels and barcodes.</p>
         </div>
         {can('products.create') && (
-          <Link to="/products/new">
-            <Button size="sm"><PlusIcon className="size-4" /> New product</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/products/labels"><Button variant="outline" size="sm"><QrCodeIcon className="size-4" /> Labels</Button></Link>
+            <Link to="/products/new"><Button size="sm"><PlusIcon className="size-4" /> New product</Button></Link>
+          </div>
         )}
       </div>
 
