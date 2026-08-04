@@ -1,20 +1,37 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BuildingOffice2Icon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import {
+  BuildingOffice2Icon,
+  KeyIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
+import { ImageUpload } from '../../components/media';
+import StatusToggle from '../../components/StatusToggle';
+import { useToast } from '../../lib/toast';
 
-const empty = { name: '', code: '', gst_number: '', state: '', state_code: '', phone: '', email: '', address: '', is_active: true };
+const empty = {
+  name: '', code: '', gst_number: '', legal_name: '', state: '', state_code: '',
+  phone: '', email: '', address: '', description: '', username: '',
+  password: '', password_confirmation: '', logo: null, is_active: true,
+};
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
 export default function CompaniesList() {
   const { isSuperAdmin } = useAuth();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(null); // null = closed, {} = new, {...} = edit
+  const toast = useToast();
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(null);
+  const [resetFor, setResetFor] = useState(null);
+  const [resetForm, setResetForm] = useState({ password: '', password_confirmation: '', generate: false });
+  const [tempPassword, setTempPassword] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['companies'],
@@ -23,13 +40,24 @@ export default function CompaniesList() {
   });
 
   const saveM = useMutation({
-    mutationFn: (payload) =>
-      payload.id ? api.put(`/companies/${payload.id}`, payload) : api.post('/companies', payload),
-    onSuccess: () => {
+    mutationFn: (payload) => {
+      const body = { ...payload };
+      if (body.logo) body.photo = body.logo;
+      if (payload.id && !body.password) {
+        delete body.password;
+        delete body.password_confirmation;
+      }
+      return payload.id ? api.put(`/companies/${payload.id}`, body) : api.post('/companies', body);
+    },
+    onSuccess: (_r, payload) => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setEditing(null);
+      toast.success(payload.id ? 'Company updated.' : 'Company created.');
     },
-    onError: (err) => setErrors(err.response?.data?.errors ?? {}),
+    onError: (err) => {
+      setErrors(err.response?.data?.errors ?? {});
+      toast.error(err.response?.data?.message ?? 'Could not save company.');
+    },
   });
 
   const deleteM = useMutation({
@@ -37,8 +65,29 @@ export default function CompaniesList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setDeleting(null);
+      toast.success('Company deleted.');
     },
   });
+
+  const resetM = useMutation({
+    mutationFn: ({ id, ...body }) => api.post(`/companies/${id}/reset-password`, body),
+    onSuccess: (res) => {
+      const temp = res.data?.data?.temporary_password;
+      if (temp) setTempPassword(temp);
+      else {
+        setResetFor(null);
+        toast.success('Password updated.');
+      }
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message ?? 'Reset failed.'),
+  });
+
+  async function onToggle(c, next) {
+    await api.patch(`/companies/${c.id}/status`, { is_active: next });
+    toast.success(`${c.name} ${next ? 'activated' : 'deactivated'}`);
+    queryClient.invalidateQueries({ queryKey: ['companies'] });
+  }
 
   if (!isSuperAdmin) {
     return (
@@ -51,10 +100,17 @@ export default function CompaniesList() {
   }
 
   const openNew = () => { setForm(empty); setErrors({}); setEditing({}); };
-  const openEdit = (c) => { setForm({ ...empty, ...c }); setErrors({}); setEditing(c); };
+  const openEdit = (c) => {
+    setForm({
+      ...empty, ...c,
+      logo: c.logo ?? c.photo ?? null,
+      password: '', password_confirmation: '',
+    });
+    setErrors({});
+    setEditing(c);
+  };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const err = (k) => errors[k]?.[0];
-
   const rows = data?.data ?? [];
 
   return (
@@ -67,47 +123,52 @@ export default function CompaniesList() {
         <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> Add company</Button>
       </div>
 
-      <Card className="overflow-hidden">
-        {isLoading ? (
-          <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
-        ) : isError ? (
-          <div className="px-4 py-12 text-center text-sm text-muted">Couldn't load companies.</div>
-        ) : rows.length === 0 ? (
-          <div className="px-4 py-16 text-center text-sm text-muted">No companies yet.</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-faint">
-                <th className="microlabel px-4 py-2.5 font-semibold">Code</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Name</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">GST</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">State</th>
-                <th className="microlabel px-4 py-2.5 text-right font-semibold">Users</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Status</th>
-                <th className="microlabel px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((c) => (
-                <tr key={c.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
-                  <td className="tnum px-4 py-2.5 text-xs">{c.code}</td>
-                  <td className="px-4 py-2.5 font-medium">{c.name}</td>
-                  <td className="tnum px-4 py-2.5 text-xs text-muted">{c.gst_number || '—'}</td>
-                  <td className="px-4 py-2.5 text-muted">{c.state || '—'}</td>
-                  <td className="tnum px-4 py-2.5 text-right text-muted">{c.users_count ?? '—'}</td>
-                  <td className="px-4 py-2.5"><Badge tone={c.is_active ? 'active' : 'inactive'}>{c.is_active ? 'active' : 'inactive'}</Badge></td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit"><PencilSquareIcon className="size-4" /></button>
-                      <button onClick={() => setDeleting(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete"><TrashIcon className="size-4" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
+      {isLoading ? (
+        <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
+      ) : isError ? (
+        <Card className="px-4 py-12 text-center text-sm text-muted">Couldn't load companies.</Card>
+      ) : rows.length === 0 ? (
+        <Card className="px-4 py-16 text-center text-sm text-muted">No companies yet.</Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {rows.map((c) => (
+            <Card key={c.id} className="flex flex-col overflow-hidden p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-leaf-soft">
+                  {(c.logo || c.photo)
+                    ? <img src={c.logo || c.photo} alt="" className="size-full object-cover" />
+                    : <BuildingOffice2Icon className="size-7 text-leaf/50" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{c.name}</p>
+                  <p className="tnum text-xs text-muted">{c.code}</p>
+                  <p className="mt-0.5 text-xs text-muted">{c.users_count ?? 0} users</p>
+                </div>
+              </div>
+              <p className="mt-3 line-clamp-2 text-xs text-muted">{c.description || c.address || 'No description'}</p>
+              <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                <StatusToggle active={Boolean(c.is_active)} onToggle={(next) => onToggle(c, next)} />
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setResetFor(c); setResetForm({ password: '', password_confirmation: '', generate: false }); setTempPassword(null); }}
+                    className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink"
+                    aria-label="Reset password"
+                    title="Reset password"
+                  >
+                    <KeyIcon className="size-4" />
+                  </button>
+                  <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit">
+                    <PencilSquareIcon className="size-4" />
+                  </button>
+                  <button onClick={() => setDeleting(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete">
+                    <TrashIcon className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Modal
         open={editing !== null}
@@ -123,16 +184,40 @@ export default function CompaniesList() {
         }
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field label="Logo / photo">
+              <ImageUpload value={form.logo} onChange={(url) => setForm((f) => ({ ...f, logo: url }))} shape="rounded" />
+            </Field>
+          </div>
           <Field label="Name" required error={err('name')}><Input value={form.name} onChange={set('name')} /></Field>
           <Field label="Code" required error={err('code')}><Input value={form.code} onChange={set('code')} placeholder="CHK-XXX" /></Field>
-          <Field label="GST number" error={err('gst_number')}><Input value={form.gst_number} onChange={set('gst_number')} /></Field>
-          <Field label="Legal name" error={err('legal_name')}><Input value={form.legal_name ?? ''} onChange={set('legal_name')} /></Field>
-          <Field label="State" error={err('state')}><Input value={form.state} onChange={set('state')} /></Field>
-          <Field label="State code" error={err('state_code')}><Input value={form.state_code} onChange={set('state_code')} placeholder="32" /></Field>
-          <Field label="Phone" error={err('phone')}><Input value={form.phone} onChange={set('phone')} /></Field>
-          <Field label="Email" error={err('email')}><Input value={form.email} onChange={set('email')} /></Field>
+          <Field label="Username" required error={err('username')}><Input value={form.username || ''} onChange={set('username')} /></Field>
+          <Field label={editing?.id ? 'Password (leave blank to keep)' : 'Password'} required={!editing?.id} error={err('password')}>
+            <Input type="password" value={form.password} onChange={set('password')} />
+          </Field>
+          {(!editing?.id || form.password) && (
+            <Field label="Confirm password" required={!editing?.id} error={err('password_confirmation')}>
+              <Input type="password" value={form.password_confirmation} onChange={set('password_confirmation')} />
+            </Field>
+          )}
+          <Field label="GST number" error={err('gst_number')}><Input value={form.gst_number || ''} onChange={set('gst_number')} /></Field>
+          <Field label="Legal name" error={err('legal_name')}><Input value={form.legal_name || ''} onChange={set('legal_name')} /></Field>
+          <Field label="State" error={err('state')}><Input value={form.state || ''} onChange={set('state')} /></Field>
+          <Field label="State code" error={err('state_code')}><Input value={form.state_code || ''} onChange={set('state_code')} placeholder="32" /></Field>
+          <Field label="Phone" error={err('phone')}><Input value={form.phone || ''} onChange={set('phone')} /></Field>
+          <Field label="Email" error={err('email')}><Input value={form.email || ''} onChange={set('email')} /></Field>
           <div className="sm:col-span-2">
-            <Field label="Address" error={err('address')}><Input value={form.address} onChange={set('address')} /></Field>
+            <Field label="Address" error={err('address')}><Input value={form.address || ''} onChange={set('address')} /></Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Description" error={err('description')}>
+              <textarea
+                value={form.description || ''}
+                onChange={set('description')}
+                rows={2}
+                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25"
+              />
+            </Field>
           </div>
           <Field label="Status">
             <select value={form.is_active ? '1' : '0'} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value === '1' }))} className={selectCls}>
@@ -141,6 +226,50 @@ export default function CompaniesList() {
             </select>
           </Field>
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(resetFor)}
+        onClose={() => { setResetFor(null); setTempPassword(null); }}
+        title={`Reset password — ${resetFor?.name ?? ''}`}
+        footer={
+          tempPassword ? (
+            <Button size="sm" onClick={() => { setResetFor(null); setTempPassword(null); toast.success('Password reset complete.'); }}>Done</Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setResetFor(null)}>Cancel</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={resetM.isPending}
+                onClick={() => resetM.mutate({ id: resetFor.id, generate: true })}
+              >
+                Generate temporary
+              </Button>
+              <Button
+                size="sm"
+                disabled={resetM.isPending || !resetForm.password}
+                onClick={() => resetM.mutate({ id: resetFor.id, password: resetForm.password, password_confirmation: resetForm.password_confirmation })}
+              >
+                {resetM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Set password'}
+              </Button>
+            </>
+          )
+        }
+      >
+        {tempPassword ? (
+          <div className="rounded-xl bg-leaf-soft/60 p-4 text-sm">
+            <p className="font-medium">Temporary password</p>
+            <p className="tnum mt-2 select-all text-lg font-semibold tracking-wide">{tempPassword}</p>
+            <p className="mt-2 text-xs text-muted">Copy this now — it won't be shown again.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">Set a new password for <span className="font-medium text-ink">{resetFor?.username || resetFor?.name}</span>, or generate a temporary one.</p>
+            <Field label="New password"><Input type="password" value={resetForm.password} onChange={(e) => setResetForm((f) => ({ ...f, password: e.target.value }))} /></Field>
+            <Field label="Confirm"><Input type="password" value={resetForm.password_confirmation} onChange={(e) => setResetForm((f) => ({ ...f, password_confirmation: e.target.value }))} /></Field>
+          </div>
+        )}
       </Modal>
 
       <Modal

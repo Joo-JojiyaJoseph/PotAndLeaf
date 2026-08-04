@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/ProfilePage';
 import ComingSoon from './pages/ComingSoon';
+import SettingsPage from './pages/settings/SettingsPage';
 import SuppliersList from './pages/suppliers/SuppliersList';
 import SupplierDetail from './pages/suppliers/SupplierDetail';
 import ProductsList from './pages/products/ProductsList';
@@ -22,6 +23,9 @@ import CustomerDetail from './pages/customers/CustomerDetail';
 import SalesList from './pages/sales/SalesList';
 import SaleForm from './pages/sales/SaleForm';
 import SaleDetail from './pages/sales/SaleDetail';
+import SalesReturnsList from './pages/salesReturns/SalesReturnsList';
+import SalesReturnForm from './pages/salesReturns/SalesReturnForm';
+import SalesReturnDetail from './pages/salesReturns/SalesReturnDetail';
 import PaymentsList from './pages/payments/PaymentsList';
 import ReceiptsList from './pages/receipts/ReceiptsList';
 import CommissionList from './pages/commission/CommissionList';
@@ -91,6 +95,9 @@ export default function App() {
           <Route path="sales" element={<SalesList />} />
           <Route path="sales/new" element={<SaleForm />} />
           <Route path="sales/:id" element={<SaleDetail />} />
+          <Route path="sales-returns" element={<SalesReturnsList />} />
+          <Route path="sales-returns/new" element={<SalesReturnForm />} />
+          <Route path="sales-returns/:id" element={<SalesReturnDetail />} />
           <Route path="payments" element={<PaymentsList />} />
           <Route path="receipts" element={<ReceiptsList />} />
           <Route path="commission" element={<CommissionList />} />
@@ -110,6 +117,7 @@ export default function App() {
           <Route path="advance-orders" element={<AdvanceOrdersList />} />
           <Route path="advance-orders/new" element={<AdvanceOrderForm />} />
           <Route path="advance-orders/:id" element={<AdvanceOrderDetail />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="soon/:module" element={<ComingSoon />} />
         </Route>
       </Route>

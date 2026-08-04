@@ -6,6 +6,8 @@ import { Badge, Button, Card } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
 import { printGRN } from '../../lib/invoicePrint';
+import { downloadPdf } from '../../lib/pdfDownload';
+import { useToast } from '../../lib/toast';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
@@ -13,6 +15,7 @@ export default function PurchaseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['purchase', id],
@@ -26,6 +29,15 @@ export default function PurchaseDetail() {
   };
   const confirmM = useMutation({ mutationFn: () => api.post(`/purchases/${id}/confirm`), onSuccess: invalidate });
   const cancelM = useMutation({ mutationFn: () => api.delete(`/purchases/${id}`), onSuccess: invalidate });
+
+  async function downloadGrnPdf() {
+    try {
+      await downloadPdf(`/purchases/${id}/invoice.pdf`, `grn-${data?.purchase_no ?? id}.pdf`);
+      toast.success('GRN PDF downloaded.');
+    } catch {
+      toast.error('Could not download PDF.');
+    }
+  }
 
   if (isLoading) return <DetailLoading />;
   if (isError || !data) return <DetailError backTo="/purchases" />;
@@ -43,7 +55,8 @@ export default function PurchaseDetail() {
           <>
             <Badge tone={statusTone[p.status] ?? 'default'}>{p.status}</Badge>
             {p.payment_status && p.payment_status !== 'n/a' && <Badge tone={p.payment_status === 'paid' ? 'active' : p.payment_status === 'partial' ? 'warning' : 'blocked'}>{p.payment_status}</Badge>}
-            <Button variant="outline" size="sm" onClick={() => printGRN(p)}><PrinterIcon className="size-4" /> Print GRN</Button>
+            <Button variant="outline" size="sm" onClick={() => printGRN(p)}><PrinterIcon className="size-4" /> Print</Button>
+            <Button variant="outline" size="sm" onClick={downloadGrnPdf}><PrinterIcon className="size-4" /> PDF</Button>
             {p.can?.update && <Button variant="outline" size="sm" onClick={() => navigate(`/purchases/${id}/edit`)}><PencilSquareIcon className="size-4" /> Edit</Button>}
             {p.can?.cancel && <Button variant="ghost" size="sm" onClick={() => cancelM.mutate()} disabled={cancelM.isPending}><XCircleIcon className="size-4" /> Cancel</Button>}
             {p.can?.confirm && <Button size="sm" onClick={() => confirmM.mutate()} disabled={confirmM.isPending}><CheckCircleIcon className="size-4" /> Confirm</Button>}

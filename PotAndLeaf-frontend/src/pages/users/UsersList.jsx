@@ -14,7 +14,7 @@ const empty = { name: '', email: '', password: '', phone: '', role_id: '', is_ac
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
 export default function UsersList() {
-  const { activeCompany, can } = useAuth();
+  const { activeCompany, can, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -23,6 +23,7 @@ export default function UsersList() {
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [page, setPage] = useState(1);
+  const [pickedCompany, setPickedCompany] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', activeCompany?.id, page],
@@ -61,12 +62,14 @@ export default function UsersList() {
     catch (e) { toast.error(e.response?.data?.message ?? 'Could not remove user.'); }
   }
 
-  const openNew = () => { setForm(empty); setErrors({}); setEditing({}); };
-  const openEdit = (u) => { setForm({ name: u.name, email: u.email, password: '', phone: u.phone ?? '', role_id: u.roles?.[0]?.id ?? '', is_active: u.is_active }); setErrors({}); setEditing(u); };
+  const openNew = () => { setForm(empty); setErrors({}); setEditing({}); setPickedCompany(!isSuperAdmin || Boolean(companyId)); };
+  const openEdit = (u) => { setForm({ name: u.name, email: u.email, password: '', phone: u.phone ?? '', role_id: u.roles?.[0]?.id ?? '', is_active: u.is_active }); setErrors({}); setEditing(u); setPickedCompany(true); };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const err = (k) => errors[k]?.[0];
   const rows = data?.data ?? [];
   const roles = formData?.roles ?? [];
+  const isCreate = editing !== null && !editing?.id;
+  const companyReady = !isSuperAdmin || !isCreate || pickedCompany || Boolean(companyId);
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
@@ -132,12 +135,24 @@ export default function UsersList() {
         footer={
           <>
             <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button size="sm" disabled={saveM.isPending} onClick={() => saveM.mutate({ ...form, id: editing?.id })}>
+            <Button size="sm" disabled={saveM.isPending || (isCreate && isSuperAdmin && !companyReady)} onClick={() => saveM.mutate({ ...form, id: editing?.id })}>
               {saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Save user'}
             </Button>
           </>
         }
       >
+        <div className="space-y-4">
+          {isSuperAdmin && isCreate && (
+            <div className="rounded-xl bg-leaf-soft/50 p-3">
+              <Field label="Company" required>
+                <select value={companyId ?? ''} onChange={(e) => { selectCompany(e.target.value); setPickedCompany(Boolean(e.target.value)); }} className={selectCls}>
+                  <option value="">Select company first…</option>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
+          {(editing?.id || !isSuperAdmin || companyReady) && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Full name" required error={err('name')}><Input value={form.name} onChange={set('name')} /></Field>
           <Field label="Email" required error={err('email')}><Input type="email" value={form.email} onChange={set('email')} /></Field>
@@ -157,6 +172,8 @@ export default function UsersList() {
               <option value="0">Inactive</option>
             </select>
           </Field>
+        </div>
+          )}
         </div>
       </Modal>
     </div>

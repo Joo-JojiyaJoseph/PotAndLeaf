@@ -18,11 +18,12 @@ const blank = {
   gst_rate: '', cost_price: '', mrp: '', dealer_price: '', wholesale_price: '', retail_price: '',
   reorder_level: '', opening_stock: '', status: 'active', images: [],
   length_cm: '', width_cm: '', height_cm: '',
+  is_rental: false, rental_daily_rate: '',
 };
 
 export default function ProductForm() {
   const { id } = useParams();
-  const { activeCompany } = useAuth();
+  const { activeCompany, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const [form, setForm] = useState(blank);
@@ -31,6 +32,8 @@ export default function ProductForm() {
   const err = (k) => errors[k]?.[0];
   const [saving, setSaving] = useState(false);
   const [margin, setMargin] = useState('40');
+  const [pickedCompany, setPickedCompany] = useState(!isSuperAdmin || Boolean(companyId));
+  const companyReady = isEdit || !isSuperAdmin || pickedCompany || Boolean(companyId);
   const applyMargin = () => {
     const cost = Number(form.cost_price) || 0;
     const m = Number(margin) || 0;
@@ -61,6 +64,7 @@ export default function ProductForm() {
       retail_price: existing.retail_price ?? '', reorder_level: existing.reorder_level ?? '',
       opening_stock: existing.opening_stock ?? '', status: existing.status ?? 'active', images: existing.images ?? [],
       length_cm: existing.length_cm ?? '', width_cm: existing.width_cm ?? '', height_cm: existing.height_cm ?? '',
+      is_rental: Boolean(existing.is_rental), rental_daily_rate: existing.rental_daily_rate ?? '',
     });
     setBarcode(existing.barcode ?? '');
   }, [existing]);
@@ -72,9 +76,14 @@ export default function ProductForm() {
     setSaving(true);
     // Send numbers as numbers; drop empty barcode so the server auto-generates.
     const payload = { ...form };
-    ['gst_rate', 'cost_price', 'mrp', 'dealer_price', 'wholesale_price', 'retail_price', 'reorder_level', 'opening_stock', 'length_cm', 'width_cm', 'height_cm'].forEach(
+    ['gst_rate', 'cost_price', 'mrp', 'dealer_price', 'wholesale_price', 'retail_price', 'reorder_level', 'opening_stock'].forEach(
+      (k) => (payload[k] = payload[k] === '' || payload[k] == null ? 0 : Number(payload[k])),
+    );
+    ['length_cm', 'width_cm', 'height_cm'].forEach(
       (k) => (payload[k] = payload[k] === '' ? null : Number(payload[k])),
     );
+    payload.is_rental = Boolean(form.is_rental);
+    payload.rental_daily_rate = form.is_rental && form.rental_daily_rate !== '' ? Number(form.rental_daily_rate) : null;
     ['hsn_code', 'barcode', 'description', 'category_id', 'brand_id', 'unit_id'].forEach(
       (k) => (payload[k] = payload[k] === '' ? null : payload[k]),
     );
@@ -116,6 +125,23 @@ export default function ProductForm() {
         <div className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">{errors._[0]}</div>
       )}
 
+      {isSuperAdmin && !isEdit && (
+        <Card className="p-4">
+          <Field label="Company" required>
+            <select
+              value={companyId ?? ''}
+              onChange={(e) => { selectCompany(e.target.value); setPickedCompany(Boolean(e.target.value)); }}
+              className={selectCls}
+            >
+              <option value="">Select company first…</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+          <p className="mt-1.5 text-xs text-muted">Choose which company this product belongs to before filling the form.</p>
+        </Card>
+      )}
+
+      {companyReady && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -196,6 +222,26 @@ export default function ProductForm() {
           </div>
 
           <div className="mt-5 border-t border-line pt-5">
+            <div className="microlabel mb-3 text-faint">Plant rental</div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={Boolean(form.is_rental)}
+                onChange={(e) => setForm((f) => ({ ...f, is_rental: e.target.checked }))}
+                className="size-4 rounded border-line text-leaf focus:ring-leaf/40"
+              />
+              This product can be rented
+            </label>
+            {form.is_rental && (
+              <div className="mt-3 max-w-xs">
+                <Field label="Daily rental rate">
+                  <Input type="number" step="0.01" value={form.rental_daily_rate} onChange={set('rental_daily_rate')} />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 border-t border-line pt-5">
             <Field label="Description" error={err('description')}>
               <textarea value={form.description} onChange={set('description')} rows={3} className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25" placeholder="Care notes, variety details…" />
             </Field>
@@ -240,6 +286,7 @@ export default function ProductForm() {
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -6,12 +6,15 @@ import { Badge, Button, Card } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
 import { printInvoice } from '../../lib/invoicePrint';
+import { downloadPdf } from '../../lib/pdfDownload';
+import { useToast } from '../../lib/toast';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
 export default function SaleDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['sale', id],
     queryFn: () => api.get(`/sales/${id}`).then((r) => r.data.data),
@@ -24,6 +27,15 @@ export default function SaleDetail() {
   const confirmM = useMutation({ mutationFn: () => api.post(`/sales/${id}/confirm`), onSuccess: invalidate });
   const cancelM = useMutation({ mutationFn: () => api.delete(`/sales/${id}`), onSuccess: invalidate });
 
+  async function downloadInvoicePdf() {
+    try {
+      await downloadPdf(`/sales/${id}/invoice.pdf`, `invoice-${data?.sale_no ?? id}.pdf`);
+      toast.success('Invoice PDF downloaded.');
+    } catch {
+      toast.error('Could not download PDF.');
+    }
+  }
+
   if (isLoading) return <DetailLoading />;
   if (isError || !data) return <DetailError backTo="/sales" />;
   const s = data;
@@ -35,7 +47,8 @@ export default function SaleDetail() {
         subtitle={`${s.customer_name} · ${formatDate(s.sale_date)}`}
         backTo="/sales"
         actions={<>
-          <Button variant="outline" size="sm" onClick={() => printInvoice(s)}><PrinterIcon className="size-4" /> Print / PDF</Button>
+          <Button variant="outline" size="sm" onClick={() => printInvoice(s)}><PrinterIcon className="size-4" /> Print</Button>
+          <Button variant="outline" size="sm" onClick={downloadInvoicePdf}><PrinterIcon className="size-4" /> PDF</Button>
           <Badge tone={statusTone[s.status] ?? 'default'}>{s.status}</Badge>
           {s.can?.cancel && <Button variant="ghost" size="sm" onClick={() => cancelM.mutate()} disabled={cancelM.isPending}><XCircleIcon className="size-4" /> Cancel</Button>}
           {s.can?.confirm && <Button size="sm" onClick={() => confirmM.mutate()} disabled={confirmM.isPending}><CheckCircleIcon className="size-4" /> Confirm</Button>}

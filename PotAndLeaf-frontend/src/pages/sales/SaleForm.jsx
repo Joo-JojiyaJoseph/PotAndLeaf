@@ -16,7 +16,7 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 export default function SaleForm() {
   const navigate = useNavigate();
   const { isSuperAdmin, companies, companyId, selectCompany, activeCompany } = useAuth();
-  const [header, setHeader] = useState({ customer_id: '', location_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '' });
+  const [header, setHeader] = useState({ customer_id: '', location_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '', loyalty_points_redeemed: '' });
   const [lines, setLines] = useState([emptyLine()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -33,7 +33,7 @@ export default function SaleForm() {
   const customer = customers.find((c) => c.id === header.customer_id);
   const customerType = customer?.type ?? 'retail';
 
-  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '', location_id: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
+  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '', location_id: '', loyalty_points_redeemed: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
   useEffect(() => {
     if (locations.length && !header.location_id) {
       const def = locations.find((l) => l.is_default) ?? locations[0];
@@ -44,6 +44,14 @@ export default function SaleForm() {
 
   const computed = useMemo(() => computeSale(lines, header.is_interstate), [lines, header.is_interstate]);
   const t = computed.totals;
+  const settings = data?.settings ?? {};
+  const redeemRate = Number(settings.loyalty_redeem_rupees) || 1;
+  const redeemCapPct = Number(settings.loyalty_redeem_cap_percent) ?? 50;
+  const balance = Number(customer?.loyalty_points) || 0;
+  const redeemPoints = Math.max(0, Number(header.loyalty_points_redeemed) || 0);
+  const maxRedeem = Math.max(0, Math.min(balance, Math.floor((t.grand_total * (redeemCapPct / 100)) / redeemRate)));
+  const loyaltyDiscount = Math.min(t.grand_total, redeemPoints * redeemRate);
+  const dueTotal = Math.max(0, t.grand_total - loyaltyDiscount);
   const err = (k) => errors[k]?.[0];
 
   const setLine = (i, patch) => setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -62,7 +70,8 @@ export default function SaleForm() {
         sale_date: header.sale_date,
         is_interstate: header.is_interstate,
         payment_mode: header.payment_mode,
-        amount_paid: header.amount_paid === '' ? t.grand_total : Number(header.amount_paid),
+        amount_paid: header.amount_paid === '' ? dueTotal : Number(header.amount_paid),
+        loyalty_points_redeemed: redeemPoints || 0,
         notes: header.notes || null,
         items: lines.filter((l) => l.product_id).map((l) => ({
           product_id: l.product_id, qty: Number(l.qty) || 0, rate: Number(l.rate) || 0,
@@ -123,9 +132,31 @@ export default function SaleForm() {
             </select>
           </Field>
           <Field label="Amount paid (blank = full)" error={err('amount_paid')}>
-            <Input type="number" step="0.01" value={header.amount_paid} onChange={(e) => setHeader((h) => ({ ...h, amount_paid: e.target.value }))} placeholder={formatCurrency(t.grand_total)} />
+            <Input type="number" step="0.01" value={header.amount_paid} onChange={(e) => setHeader((h) => ({ ...h, amount_paid: e.target.value }))} placeholder={formatCurrency(dueTotal)} />
           </Field>
         </div>
+        {header.customer_id && (
+          <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl bg-leaf-soft/40 p-3 sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted">Loyalty balance</p>
+              <p className="tnum text-base font-semibold">{balance} pts</p>
+            </div>
+            <Field label="Redeem points" error={err('loyalty_points_redeemed')}>
+              <Input
+                type="number"
+                min="0"
+                max={maxRedeem}
+                value={header.loyalty_points_redeemed}
+                onChange={(e) => setHeader((h) => ({ ...h, loyalty_points_redeemed: e.target.value }))}
+                placeholder={`Max ${maxRedeem}`}
+              />
+            </Field>
+            <div>
+              <p className="text-xs text-muted">Loyalty discount</p>
+              <p className="tnum text-base font-semibold">{formatCurrency(loyaltyDiscount)}</p>
+            </div>
+          </div>
+        )}
         <label className="mt-3 flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" checked={header.is_interstate} onChange={(e) => setHeader((h) => ({ ...h, is_interstate: e.target.checked }))} className="size-4 rounded border-line text-leaf focus:ring-leaf/40" />
           Inter-state supply (charge IGST instead of CGST + SGST)
@@ -195,7 +226,11 @@ export default function SaleForm() {
               </>
             )}
             <div className="flex justify-between text-muted"><dt>Round off</dt><dd className="tnum">{formatCurrency(t.round_off)}</dd></div>
-            <div className="mt-2 flex justify-between border-t border-line pt-2 text-base font-semibold"><dt>Total</dt><dd className="tnum">{formatCurrency(t.grand_total)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Total</dt><dd className="tnum">{formatCurrency(t.grand_total)}</dd></div>
+            {loyaltyDiscount > 0 && (
+              <div className="flex justify-between text-leaf"><dt>Loyalty discount</dt><dd className="tnum">−{formatCurrency(loyaltyDiscount)}</dd></div>
+            )}
+            <div className="mt-2 flex justify-between border-t border-line pt-2 text-base font-semibold"><dt>Amount due</dt><dd className="tnum">{formatCurrency(dueTotal)}</dd></div>
           </dl>
           <Button className="mt-4 w-full" onClick={save} disabled={saving}>{saving ? <Spinner className="border-white/40 border-t-white" /> : 'Save draft'}</Button>
         </Card>

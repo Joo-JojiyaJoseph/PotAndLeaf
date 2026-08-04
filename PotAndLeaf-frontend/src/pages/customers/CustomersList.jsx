@@ -5,18 +5,19 @@ import { MagnifyingGlassIcon, PencilSquareIcon, PlusIcon, TrashIcon } from '@her
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
+import { ImageUpload } from '../../components/media';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../lib/confirm';
 import Pagination from '../../components/Pagination';
 import StatusToggle from '../../components/StatusToggle';
 
-const empty = { customer_code: '', name: '', type: 'retail', phone: '', whatsapp: '', email: '', gst_number: '', city: '', state: '', credit_days: '', credit_limit: '', opening_balance: '', address_line1: '', notes: '', status: 'active' };
+const empty = { customer_code: '', name: '', type: 'retail', phone: '', whatsapp: '', email: '', gst_number: '', city: '', state: '', credit_days: '', credit_limit: '', opening_balance: '', address_line1: '', notes: '', status: 'active', photo: null };
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 const typeTone = { retail: 'info', wholesale: 'active', dealer: 'pending' };
 const TYPES = [{ v: '', l: 'All types' }, { v: 'retail', l: 'Retail' }, { v: 'wholesale', l: 'Wholesale' }, { v: 'dealer', l: 'Dealer' }];
 
 export default function CustomersList() {
-  const { activeCompany, can } = useAuth();
+  const { activeCompany, can, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -28,6 +29,7 @@ export default function CustomersList() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
+  const [pickedCompany, setPickedCompany] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['customers', activeCompany?.id, debounced, type, page],
@@ -55,8 +57,11 @@ export default function CustomersList() {
     catch (e) { toast.error(e.response?.data?.message ?? 'Could not delete customer.'); }
   }
 
-  const openNew = () => { setForm(empty); setErrors({}); setEditing({}); };
-  const openEdit = (c) => { setForm({ ...empty, ...c }); setErrors({}); setEditing(c); };
+  const isCreate = editing !== null && !editing?.id;
+  const companyReady = !isSuperAdmin || !isCreate || Boolean(companyId) || pickedCompany;
+
+  const openNew = () => { setForm(empty); setErrors({}); setEditing({}); setPickedCompany(!isSuperAdmin || Boolean(companyId)); };
+  const openEdit = (c) => { setForm({ ...empty, ...c, photo: c.photo ?? null }); setErrors({}); setEditing(c); setPickedCompany(true); };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const err = (k) => errors[k]?.[0];
   const rows = data?.data ?? [];
@@ -126,35 +131,51 @@ export default function CustomersList() {
         title={editing?.id ? `Edit ${editing.name}` : 'New customer'}
         footer={<>
           <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
-          <Button size="sm" disabled={saveM.isPending} onClick={() => saveM.mutate({ ...form, id: editing?.id })}>{saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Save'}</Button>
+          <Button size="sm" disabled={saveM.isPending || (isCreate && isSuperAdmin && !companyReady)} onClick={() => saveM.mutate({ ...form, id: editing?.id })}>{saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Save'}</Button>
         </>}
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Name" required error={err('name')}><Input value={form.name} onChange={set('name')} /></Field>
-          <Field label="Type" required error={err('type')}>
-            <select value={form.type} onChange={set('type')} className={selectCls}>
-              <option value="retail">Retail</option><option value="wholesale">Wholesale</option><option value="dealer">Dealer</option>
-            </select>
-          </Field>
-          <Field label="Code (auto if blank)" error={err('customer_code')}><Input value={form.customer_code} onChange={set('customer_code')} /></Field>
-          <Field label="GST number" error={err('gst_number')}><Input value={form.gst_number} onChange={set('gst_number')} /></Field>
-          <Field label="Phone" error={err('phone')}><Input value={form.phone} onChange={set('phone')} /></Field>
-          <Field label="WhatsApp" error={err('whatsapp')}><Input value={form.whatsapp} onChange={set('whatsapp')} /></Field>
-          <Field label="Email" error={err('email')}><Input value={form.email} onChange={set('email')} /></Field>
-          <Field label="City" error={err('city')}><Input value={form.city} onChange={set('city')} /></Field>
-          <Field label="State" error={err('state')}><Input value={form.state} onChange={set('state')} /></Field>
-          <Field label="Credit days" error={err('credit_days')}><Input type="number" value={form.credit_days} onChange={set('credit_days')} /></Field>
-          <Field label="Credit limit" error={err('credit_limit')}><Input type="number" step="0.01" value={form.credit_limit} onChange={set('credit_limit')} /></Field>
-          <Field label="Opening balance" error={err('opening_balance')}><Input type="number" step="0.01" value={form.opening_balance} onChange={set('opening_balance')} /></Field>
-          <div className="sm:col-span-2"><Field label="Address" error={err('address_line1')}><Input value={form.address_line1} onChange={set('address_line1')} /></Field></div>
-          <Field label="Status">
-            <select value={form.status} onChange={set('status')} className={selectCls}>
-              <option value="active">Active</option><option value="inactive">Inactive</option><option value="blocked">Blocked</option>
-            </select>
-          </Field>
+        <div className="space-y-4">
+          {isSuperAdmin && isCreate && (
+            <div className="rounded-xl bg-leaf-soft/50 p-3">
+              <Field label="Company" required>
+                <select value={companyId ?? ''} onChange={(e) => { selectCompany(e.target.value); setPickedCompany(Boolean(e.target.value)); }} className={selectCls}>
+                  <option value="">Select company first…</option>
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            </div>
+          )}
+          {(editing?.id || !isSuperAdmin || companyReady) && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Field label="Photo"><ImageUpload value={form.photo} onChange={(url) => setForm((f) => ({ ...f, photo: url }))} /></Field>
+              </div>
+              <Field label="Name" required error={err('name')}><Input value={form.name} onChange={set('name')} /></Field>
+              <Field label="Type" required error={err('type')}>
+                <select value={form.type} onChange={set('type')} className={selectCls}>
+                  <option value="retail">Retail</option><option value="wholesale">Wholesale</option><option value="dealer">Dealer</option>
+                </select>
+              </Field>
+              <Field label="Code (auto if blank)" error={err('customer_code')}><Input value={form.customer_code || ''} onChange={set('customer_code')} /></Field>
+              <Field label="GST number" error={err('gst_number')}><Input value={form.gst_number || ''} onChange={set('gst_number')} /></Field>
+              <Field label="Phone" error={err('phone')}><Input value={form.phone || ''} onChange={set('phone')} /></Field>
+              <Field label="WhatsApp" error={err('whatsapp')}><Input value={form.whatsapp || ''} onChange={set('whatsapp')} /></Field>
+              <Field label="Email" error={err('email')}><Input value={form.email || ''} onChange={set('email')} /></Field>
+              <Field label="City" error={err('city')}><Input value={form.city || ''} onChange={set('city')} /></Field>
+              <Field label="State" error={err('state')}><Input value={form.state || ''} onChange={set('state')} /></Field>
+              <Field label="Credit days" error={err('credit_days')}><Input type="number" value={form.credit_days ?? ''} onChange={set('credit_days')} /></Field>
+              <Field label="Credit limit" error={err('credit_limit')}><Input type="number" step="0.01" value={form.credit_limit ?? ''} onChange={set('credit_limit')} /></Field>
+              <Field label="Opening balance" error={err('opening_balance')}><Input type="number" step="0.01" value={form.opening_balance ?? ''} onChange={set('opening_balance')} /></Field>
+              <div className="sm:col-span-2"><Field label="Address" error={err('address_line1')}><Input value={form.address_line1 || ''} onChange={set('address_line1')} /></Field></div>
+              <Field label="Status">
+                <select value={form.status} onChange={set('status')} className={selectCls}>
+                  <option value="active">Active</option><option value="inactive">Inactive</option><option value="blocked">Blocked</option>
+                </select>
+              </Field>
+            </div>
+          )}
         </div>
       </Modal>
-
     </div>
   );
 }
