@@ -604,3 +604,88 @@ shape is now identical to the two pivots already proven working by your successf
 Note on **multiple product photos**: the data layer already supports a gallery — `products.images`
 is a JSON array and the store/update requests accept `images[]`. What's not yet built is the
 binary upload endpoint + gallery UI (see the gap list shared in chat).
+
+---
+
+## Admin UX layer — foundation (first slice of the four-epic backlog)
+
+Reusable primitives + profile, wired end-to-end so the rest of the app can adopt them:
+- **Toasts** — `src/lib/toast.jsx` (ToastProvider + `useToast()`); success/error/info, auto-dismiss,
+  accent-tinted, mounted app-wide. Replaces silent success/failure.
+- **Confirm dialogs** — `src/lib/confirm.jsx` (`useConfirm()` → Promise<bool>); a soft glass
+  modal for destructive/consequential actions. Replaces raw deletes.
+- **Pagination** — `src/components/Pagination.jsx`, driven by the API's existing `meta`
+  ({current_page,last_page,per_page,total,from,to}). Lists can now page instead of capping.
+- **Instant status toggle** — `src/components/StatusToggle.jsx`; optimistic AJAX on/off with
+  revert-on-error. Backed by a light `PATCH /products/{id}/status` endpoint (pattern to reuse
+  for suppliers/customers/users/companies).
+- **Profile page** — `/profile` (linked from the top-bar avatar menu): edit name/email/phone
+  and change password. Backend `PUT /me` (validates `current_password` before a change).
+- **Company-switch confirmation** — super admins get a confirm dialog + toast before the
+  workspace switches companies.
+
+Wired fully into the **Products list** as the reference implementation (pagination +
+confirm-delete + toast + live status toggle). The primitives are ready to roll out to the
+other lists/entities next.
+
+Still queued from the four requested epics: media + detail (photo uploads, supplier bank
+details, card layouts, per-supplier/customer purchase-history pages); the rest of the admin
+toggle/pagination rollout and super-admin "pick company first" record creation; accounting
+depth (cash/bank books, ageing, running expenses, profit & comparison reports, EOD summaries);
+loyalty redemption and plant-care WhatsApp campaigns.
+
+---
+
+## Admin UX rollout across lists (Step 3, items 1–6)
+
+The primitives from the previous slice are now wired across the main entity lists:
+- **Status toggles everywhere** — instant AJAX active/deactivate on products, suppliers,
+  customers, and users, backed by dedicated endpoints:
+  `PATCH products|suppliers|customers/{id}/status` (status) and
+  `PATCH users/{id}/status`, `PATCH companies/{company}/status` (is_active). Optimistic with
+  revert-on-error; each fires a toast. (Blocked customers stay a badge; super admins can't be
+  toggled.)
+- **Delete confirmations + toasts** on every delete in those lists (replaced the old modals
+  and a stray `window.confirm`).
+- **Pagination** rendered on products, customers, and users lists (suppliers already had a
+  pager); filters/search reset to page 1 and are preserved across pages.
+- **Super admin** now excluded from the user list (backend filter), and the user list is
+  paginated.
+- **Create/update/delete/status/switch** actions now surface success/error toasts app-wide.
+
+Still to come in the media/detail pass (Step 3 items 7–10): company list as cards +
+username/password/photo/description + reset-password; supplier list as cards + photo +
+address + bank details + purchase-history page; customer photo + purchase-history view;
+product multiple-photo gallery upload; and super-admin "pick company first" on create forms.
+These need a shared photo-upload/storage primitive, which is the first thing I'll build there.
+
+---
+
+## Media epic — upload primitive + product gallery (first slice of Step 3 items 7–10)
+
+**Photo upload endpoint** — `POST /uploads` (auth required) accepts an image
+(jpg/png/webp/gif, ≤5MB), stores it on the `public` disk under `uploads/`, and returns an
+absolute URL. **Two setup steps on your machine:** run `php artisan storage:link` once, and
+make sure `APP_URL` in `.env` is your backend host (e.g. `http://potandleaf-backend.test`)
+so returned image URLs resolve from the SPA's dev origin.
+
+**Reusable uploader components** (`src/components/media.jsx`):
+- `ImageUpload` — single avatar/logo picker (upload / replace / remove, live preview).
+- `ImageGallery` — multi-photo grid (first image = primary, up to N, per-photo remove).
+
+**Product form** now has a **photo gallery** and a **description** field, both round-tripping
+through the product's existing `images` (JSON) and `description` columns — completing Step 3
+item 10 (multiple photos + description + the active toggle already on the list). Re-confirms
+the Step 1 area: creating/editing a product with several photos and a supplier works.
+
+**Schema groundwork** (migration `add_media_and_bank_fields`): added `photo` to suppliers and
+customers; `bank_account_name` + `address` to suppliers (they already had bank_name /
+bank_account_no / bank_ifsc); `logo` + `description` to companies. Columns + model `$fillable`
+are in place, ready for the supplier/customer/company form wiring next.
+
+Re-run `php artisan migrate:fresh --seed` (or `php artisan migrate`) to add the new columns.
+
+Still queued in this epic: wire photo/bank/address into the supplier, customer, and company
+forms; supplier & company **card list** layouts; per-supplier and per-customer **purchase-history**
+pages; company **username/password + reset-password**; and super-admin **"pick company first"**
+on create forms.

@@ -29,10 +29,12 @@ class UserController extends Controller
         $this->allow($request, 'users.view');
 
         $users = User::query()
+            ->where('is_super_admin', false)
             ->whereHas('companies', fn ($q) => $q->whereKey($company->id))
             ->with(['roles' => fn ($q) => $q->where('company_id', $company->id)])
             ->orderBy('name')
-            ->get();
+            ->paginate(min((int) $request->integer('per_page', 25), 100))
+            ->withQueryString();
 
         return $this->ok(UserResource::collection($users));
     }
@@ -146,5 +148,17 @@ class UserController extends Controller
     private function ensureMember(User $user, int|string $companyId): void
     {
         abort_unless($user->companies()->whereKey($companyId)->exists(), 404, 'User is not in this company.');
+    }
+
+    public function toggleStatus(Request $request, User $user): JsonResponse
+    {
+        $company = $this->company($request);
+        $this->allow($request, 'users.update');
+        abort_unless($user->companies()->whereKey($company->id)->exists(), 404);
+        abort_if((bool) $user->is_super_admin, 403, 'A super admin cannot be deactivated here.');
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+        $user->update(['is_active' => $data['is_active']]);
+
+        return $this->ok(['id' => $user->id, 'is_active' => (bool) $user->is_active], 'Status updated.');
     }
 }

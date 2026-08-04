@@ -74,4 +74,15 @@ class CustomerController extends Controller
     {
         abort_unless((string) $customer->company_id === (string) $this->company($request)->id, 404);
     }
+
+    public function toggleStatus(Request $request, Customer $customer): JsonResponse
+    {
+        $company = $this->company($request);
+        abort_unless($request->user()->hasPermission('customers.update', $company->id), 403);
+        abort_unless((string) $customer->company_id === (string) $company->id, 404);
+        $data = $request->validate(['status' => ['required', 'in:active,inactive']]);
+        $customer->update(['status' => $data['status']]);
+
+        return $this->ok(['id' => $customer->id, 'status' => $customer->status], 'Status updated.');
+    }
 }

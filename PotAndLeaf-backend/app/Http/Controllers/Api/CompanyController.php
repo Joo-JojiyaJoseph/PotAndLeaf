@@ -61,4 +61,13 @@ class CompanyController extends Controller
     {
         abort_unless((bool) $request->user()?->is_super_admin, 403, 'Only HO super admins can manage companies.');
     }
+
+    public function toggleStatus(Request $request, Company $company): JsonResponse
+    {
+        abort_unless((bool) $request->user()?->is_super_admin, 403, 'Only HO super admins can manage companies.');
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+        $company->update(['is_active' => $data['is_active']]);
+
+        return $this->ok(['id' => $company->id, 'is_active' => (bool) $company->is_active], 'Status updated.');
+    }
 }

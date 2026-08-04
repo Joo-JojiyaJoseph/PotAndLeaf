@@ -3,6 +3,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import AppShell from './components/AppShell';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import ProfilePage from './pages/ProfilePage';
 import ComingSoon from './pages/ComingSoon';
 import SuppliersList from './pages/suppliers/SuppliersList';
 import SupplierDetail from './pages/suppliers/SupplierDetail';
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="roles" element={<RolesList />} />
           <Route path="masters" element={<MastersPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="bulk-splits" element={<BulkSplitsList />} />
           <Route path="bulk-splits/new" element={<BulkSplitForm />} />
           <Route path="bulk-splits/:id" element={<BulkSplitDetail />} />

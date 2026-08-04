@@ -38,8 +38,7 @@ class Supplier extends Model
         'opening_balance',
         'outstanding',
         'notes',
-        'status',
-    ];
+        'status', 'photo', 'bank_account_name', 'address',];
 
     /**
      * Sensitive statutory / banking fields are encrypted at rest.

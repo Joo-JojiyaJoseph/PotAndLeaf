@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\BulkSplitController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CustomerController;
@@ -47,10 +48,13 @@ Route::post('login', [AuthController::class, 'login']);
 // Authenticated (any company)
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
+    Route::put('me', [AuthController::class, 'updateProfile']);
+    Route::post('uploads', [UploadController::class, 'store']);
     Route::post('logout', [AuthController::class, 'logout']);
 
     // Company management (HO super admin only — not company-scoped)
     Route::get('companies', [CompanyController::class, 'index']);
+        Route::patch('companies/{company}/status', [CompanyController::class, 'toggleStatus']);
     Route::post('companies', [CompanyController::class, 'store']);
     Route::get('companies/{company}', [CompanyController::class, 'show']);
     Route::put('companies/{company}', [CompanyController::class, 'update']);
@@ -108,6 +112,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Products master (CRUD)
         Route::get('products/form-data', [ProductController::class, 'formData']);
         Route::get('products', [ProductController::class, 'index']);
+        Route::patch('products/{product}/status', [ProductController::class, 'toggleStatus']);
+        Route::patch('users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::patch('customers/{customer}/status', [CustomerController::class, 'toggleStatus']);
+        Route::patch('suppliers/{supplier}/status', [SupplierController::class, 'toggleStatus']);
+
         Route::post('products', [ProductController::class, 'store']);
         Route::get('products/{product}', [ProductController::class, 'show']);
         Route::put('products/{product}', [ProductController::class, 'update']);

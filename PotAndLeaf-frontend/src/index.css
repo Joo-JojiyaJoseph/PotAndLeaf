@@ -17,10 +17,10 @@
   --color-line: #E3EBE7;       /* borders                   */
   --color-line-strong: #C9D7D1;
 
-  --color-leaf: #5E9B6B;       /* accent                    */
-  --color-leaf-hover: #487B55; /* accent dark               */
-  --color-leaf-light: #7CB489; /* accent light              */
-  --color-leaf-soft: #DCEEDF;  /* accent pale               */
+  --color-leaf: #8EA53F;       /* accent                    */
+  --color-leaf-hover: #6F8030; /* accent dark               */
+  --color-leaf-light: #A3BB52; /* accent light              */
+  --color-leaf-soft: #EEF2DF;  /* accent pale               */
 
   --color-terracotta: #C58A5B; /* warm secondary (logo pot) */
   --color-terracotta-soft: #F3E9DF;
@@ -53,3 +53,9 @@ body {
 /* Mono-style micro label used across the theme (uppercase, tracked). */
 .microlabel { font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; }
 ::selection { background: var(--color-leaf-soft); }
+
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes dialogIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.toast-in { animation: toastIn .22s cubic-bezier(.2,.7,.3,1); }
+.dialog-in { animation: dialogIn .18s cubic-bezier(.2,.7,.3,1); }
+@media (prefers-reduced-motion: reduce) { .toast-in, .dialog-in { animation: none; } }

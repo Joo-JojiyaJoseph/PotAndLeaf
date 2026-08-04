@@ -1,35 +1,56 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MagnifyingGlassIcon, PlusIcon, PencilSquareIcon, TrashIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Badge, Button, Card, Input, Modal, Spinner } from '../../components/ui';
+import { useToast } from '../../lib/toast';
+import { useConfirm } from '../../lib/confirm';
+import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
+import Pagination from '../../components/Pagination';
+import StatusToggle from '../../components/StatusToggle';
 
 export default function ProductsList() {
   const { activeCompany, can } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [deleting, setDeleting] = useState(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['products', activeCompany?.id, debounced],
-    queryFn: () => api.get('/products', { params: { search: debounced, per_page: 25 } }).then((r) => r.data),
+    queryKey: ['products', activeCompany?.id, debounced, page],
+    queryFn: () => api.get('/products', { params: { search: debounced, per_page: 25, page } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
 
-  const deleteM = useMutation({
-    mutationFn: (id) => api.delete(`/products/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      setDeleting(null);
-    },
-  });
-
   const rows = data?.data ?? [];
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['products'] });
+
+  async function onToggle(p, next) {
+    await api.patch(`/products/${p.id}/status`, { status: next ? 'active' : 'inactive' });
+    toast.success(`${p.name} ${next ? 'activated' : 'deactivated'}`);
+    invalidate();
+  }
+
+  async function onDelete(p) {
+    const ok = await confirm({
+      title: 'Delete product',
+      message: `Delete ${p.name}? This is a soft delete — stock history is preserved.`,
+      confirmLabel: 'Delete', tone: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/products/${p.id}`);
+      toast.success(`${p.name} deleted`);
+      invalidate();
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? 'Could not delete product.');
+    }
+  }
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
@@ -46,7 +67,7 @@ export default function ProductsList() {
         )}
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); setDebounced(search); }} className="relative max-w-md">
+      <form onSubmit={(e) => { e.preventDefault(); setPage(1); setDebounced(search); }} className="relative max-w-md">
         <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, SKU or barcode…" className="pl-9" />
       </form>
@@ -79,21 +100,19 @@ export default function ProductsList() {
                   <td className="tnum px-4 py-2.5 text-xs">{p.sku}</td>
                   <td className="px-4 py-2.5 font-medium">{p.name}</td>
                   <td className="tnum px-4 py-2.5 text-xs text-muted">{p.barcode || '—'}</td>
-                  <td className="tnum px-4 py-2.5 text-right">
-                    <span className={p.is_low_stock ? 'text-amber' : ''}>{p.current_stock}</span>
+                  <td className="tnum px-4 py-2.5 text-right"><span className={p.is_low_stock ? 'text-amber' : ''}>{p.current_stock}</span></td>
+                  <td className="px-4 py-2.5">
+                    {can('products.update')
+                      ? <StatusToggle active={p.status === 'active'} onToggle={(next) => onToggle(p, next)} />
+                      : <Badge tone={p.status === 'active' ? 'active' : 'inactive'}>{p.status}</Badge>}
                   </td>
-                  <td className="px-4 py-2.5"><Badge tone={p.status === 'active' ? 'active' : 'inactive'}>{p.status}</Badge></td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
                       {can('products.update') && (
-                        <button onClick={() => navigate(`/products/${p.id}/edit`)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit">
-                          <PencilSquareIcon className="size-4" />
-                        </button>
+                        <button onClick={() => navigate(`/products/${p.id}/edit`)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit"><PencilSquareIcon className="size-4" /></button>
                       )}
                       {can('products.delete') && (
-                        <button onClick={() => setDeleting(p)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete">
-                          <TrashIcon className="size-4" />
-                        </button>
+                        <button onClick={() => onDelete(p)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete"><TrashIcon className="size-4" /></button>
                       )}
                     </div>
                   </td>
@@ -102,23 +121,10 @@ export default function ProductsList() {
             </tbody>
           </table>
         )}
+        {!isLoading && rows.length > 0 && (
+          <div className="border-t border-line px-3"><Pagination meta={data?.meta} onPage={setPage} /></div>
+        )}
       </Card>
-
-      <Modal
-        open={Boolean(deleting)}
-        onClose={() => setDeleting(null)}
-        title="Delete product"
-        footer={
-          <>
-            <Button variant="ghost" size="sm" onClick={() => setDeleting(null)}>Cancel</Button>
-            <Button variant="danger" size="sm" disabled={deleteM.isPending} onClick={() => deleteM.mutate(deleting.id)}>Delete</Button>
-          </>
-        }
-      >
-        <p className="text-sm text-muted">
-          Delete <span className="font-medium text-ink">{deleting?.name}</span>? This is a soft delete — stock history is preserved.
-        </p>
-      </Modal>
     </div>
   );
 }

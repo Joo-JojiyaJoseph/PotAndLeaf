@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowRightStartOnRectangleIcon,
   Bars3Icon,
+  UserCircleIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
@@ -53,6 +55,14 @@ export default function Topbar({ onMenu }) {
                 <div className="truncate text-sm font-medium">{user?.name}</div>
                 <div className="truncate text-xs text-muted">{user?.email}</div>
               </div>
+              <Link
+                to="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted hover:bg-paper hover:text-ink"
+              >
+                <UserCircleIcon className="size-4" />
+                My profile
+              </Link>
               <button
                 onClick={logout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted hover:bg-paper hover:text-ink"

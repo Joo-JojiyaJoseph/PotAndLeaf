@@ -5,6 +5,7 @@ import { ArrowLeftIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Card, Field, Input, Spinner } from '../../components/ui';
+import { ImageGallery } from '../../components/media';
 import { Barcode, printBarcodeLabel } from '../../components/Barcode';
 
 const selectCls =
@@ -15,7 +16,7 @@ const blank = {
   sku: '', name: '', hsn_code: '', barcode: '', description: '',
   category_id: '', brand_id: '', unit_id: '',
   gst_rate: '', cost_price: '', mrp: '', dealer_price: '', wholesale_price: '', retail_price: '',
-  reorder_level: '', opening_stock: '', status: 'active',
+  reorder_level: '', opening_stock: '', status: 'active', images: [],
   length_cm: '', width_cm: '', height_cm: '',
 };
 
@@ -58,7 +59,7 @@ export default function ProductForm() {
       gst_rate: existing.gst_rate ?? '', cost_price: existing.cost_price ?? '', mrp: existing.mrp ?? '',
       dealer_price: existing.dealer_price ?? '', wholesale_price: existing.wholesale_price ?? '',
       retail_price: existing.retail_price ?? '', reorder_level: existing.reorder_level ?? '',
-      opening_stock: existing.opening_stock ?? '', status: existing.status ?? 'active',
+      opening_stock: existing.opening_stock ?? '', status: existing.status ?? 'active', images: existing.images ?? [],
       length_cm: existing.length_cm ?? '', width_cm: existing.width_cm ?? '', height_cm: existing.height_cm ?? '',
     });
     setBarcode(existing.barcode ?? '');
@@ -193,6 +194,12 @@ export default function ProductForm() {
               <Field label="Height"><Input type="number" step="0.01" value={form.height_cm} onChange={set('height_cm')} /></Field>
             </div>
           </div>
+
+          <div className="mt-5 border-t border-line pt-5">
+            <Field label="Description" error={err('description')}>
+              <textarea value={form.description} onChange={set('description')} rows={3} className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25" placeholder="Care notes, variety details…" />
+            </Field>
+          </div>
         </Card>
 
         <div className="space-y-4">
@@ -221,6 +228,11 @@ export default function ProductForm() {
                 <Input value={form.barcode} onChange={set('barcode')} placeholder="Auto-generated if blank" />
               </Field>
             </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="microlabel mb-3 text-faint">Photos</div>
+            <ImageGallery value={form.images} onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))} max={6} />
           </Card>
 
           <Button className="w-full" onClick={save} disabled={saving}>

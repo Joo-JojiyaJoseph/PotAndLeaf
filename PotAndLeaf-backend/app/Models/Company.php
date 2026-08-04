@@ -13,8 +13,7 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'code', 'legal_name', 'gst_number', 'state', 'state_code',
-        'address', 'phone', 'email', 'is_active',
-    ];
+        'address', 'phone', 'email', 'is_active', 'logo', 'description',];
 
     protected function casts(): array
     {

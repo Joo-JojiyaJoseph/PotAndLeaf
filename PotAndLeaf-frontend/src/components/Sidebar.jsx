@@ -27,6 +27,8 @@ import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../lib/confirm';
+import { useToast } from '../lib/toast';
 import { classNames } from '../lib/format';
 
 const GROUPS = [
@@ -86,7 +88,27 @@ function PotLeafMark() {
 }
 
 function CompanySwitcher() {
-  const { companies, companyId, selectCompany } = useAuth();
+  const { companies, companyId, selectCompany, isSuperAdmin } = useAuth();
+  const confirm = useConfirm();
+  const toast = useToast();
+
+  async function onChange(e) {
+    const next = e.target.value;
+    if (!next || String(next) === String(companyId)) return;
+    const name = companies.find((c) => String(c.id) === String(next))?.name ?? 'this company';
+    if (isSuperAdmin) {
+      const ok = await confirm({
+        title: 'Switch company?',
+        message: `The whole workspace will switch to ${name}. Any unsaved changes on the current screen may be lost.`,
+        confirmLabel: 'Switch',
+        tone: 'primary',
+      });
+      if (!ok) return;
+    }
+    selectCompany(next);
+    toast.info(`Switched to ${name}`);
+  }
+
   return (
     <div className="px-3 pb-3">
       <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted">
@@ -94,7 +116,7 @@ function CompanySwitcher() {
       </label>
       <select
         value={companyId ?? ''}
-        onChange={(e) => selectCompany(e.target.value)}
+        onChange={onChange}
         className="h-9 w-full rounded-xl border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25"
       >
         {companies.length === 0 && <option value="">No companies</option>}
@@ -136,7 +158,7 @@ function Item({ item }) {
         classNames(
           base,
           isActive
-            ? 'bg-surface font-medium text-leaf shadow-soft'
+            ? 'bg-leaf font-medium text-white shadow-soft'
             : 'text-muted hover:bg-surface hover:text-ink',
         )
       }

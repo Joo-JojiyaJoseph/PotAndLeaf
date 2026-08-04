@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../lib/toast';
+import { useConfirm } from '../../lib/confirm';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
+import Pagination from '../../components/Pagination';
+import StatusToggle from '../../components/StatusToggle';
 
 const empty = { name: '', email: '', password: '', phone: '', role_id: '', is_active: true };
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
@@ -13,45 +17,54 @@ export default function UsersList() {
   const { activeCompany, can } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
-  const [removing, setRemoving] = useState(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['users', activeCompany?.id],
-    queryFn: () => api.get('/users').then((r) => r.data),
+    queryKey: ['users', activeCompany?.id, page],
+    queryFn: () => api.get('/users', { params: { page, per_page: 25 } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
+    keepPreviousData: true,
   });
-
   const { data: formData } = useQuery({
     queryKey: ['users-form-data', activeCompany?.id],
     queryFn: () => api.get('/users/form-data').then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
 
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] });
+
   const saveM = useMutation({
     mutationFn: (payload) => (payload.id ? api.put(`/users/${payload.id}`, payload) : api.post('/users', payload)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setEditing(null);
-    },
-    onError: (err) => setErrors(err.response?.data?.errors ?? {}),
+    onSuccess: (_r, payload) => { invalidate(); setEditing(null); toast.success(payload.id ? 'User updated.' : 'User created.'); },
+    onError: (err) => { setErrors(err.response?.data?.errors ?? {}); toast.error(err.response?.data?.message ?? 'Could not save user.'); },
   });
 
-  const removeM = useMutation({
-    mutationFn: (id) => api.delete(`/users/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setRemoving(null);
-    },
-  });
+  async function onToggle(u, next) {
+    await api.patch(`/users/${u.id}/status`, { is_active: next });
+    toast.success(`${u.name} ${next ? 'activated' : 'deactivated'}`);
+    invalidate();
+  }
+
+  async function onRemove(u) {
+    const ok = await confirm({
+      title: 'Remove user',
+      message: `Remove ${u.name} from ${activeCompany?.name}? Their login stays, but access to this company and its roles is revoked.`,
+      confirmLabel: 'Remove', tone: 'danger',
+    });
+    if (!ok) return;
+    try { await api.delete(`/users/${u.id}`); toast.success(`${u.name} removed`); invalidate(); }
+    catch (e) { toast.error(e.response?.data?.message ?? 'Could not remove user.'); }
+  }
 
   const openNew = () => { setForm(empty); setErrors({}); setEditing({}); };
   const openEdit = (u) => { setForm({ name: u.name, email: u.email, password: '', phone: u.phone ?? '', role_id: u.roles?.[0]?.id ?? '', is_active: u.is_active }); setErrors({}); setEditing(u); };
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const err = (k) => errors[k]?.[0];
-
   const rows = data?.data ?? [];
   const roles = formData?.roles ?? [];
 
@@ -89,18 +102,19 @@ export default function UsersList() {
                 <tr key={u.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
                   <td className="px-4 py-2.5 font-medium">
                     <button onClick={() => navigate(`/users/${u.id}`)} className="text-ink hover:text-leaf">{u.name}</button>
-                    {u.is_super_admin && <span className="ml-2 rounded bg-leaf-soft px-1.5 py-0.5 text-[10px] font-medium text-leaf-hover">HO</span>}
                   </td>
                   <td className="px-4 py-2.5 text-muted">{u.email}</td>
-                  <td className="px-4 py-2.5">
-                    {u.roles?.length ? <Badge tone="info">{u.roles[0].name}</Badge> : <span className="text-muted">—</span>}
-                  </td>
+                  <td className="px-4 py-2.5">{u.roles?.length ? <Badge tone="info">{u.roles[0].name}</Badge> : <span className="text-muted">—</span>}</td>
                   <td className="tnum px-4 py-2.5 text-xs text-muted">{u.phone || '—'}</td>
-                  <td className="px-4 py-2.5"><Badge tone={u.is_active ? 'active' : 'inactive'}>{u.is_active ? 'active' : 'inactive'}</Badge></td>
+                  <td className="px-4 py-2.5">
+                    {can('users.update')
+                      ? <StatusToggle active={u.is_active} onToggle={(next) => onToggle(u, next)} />
+                      : <Badge tone={u.is_active ? 'active' : 'inactive'}>{u.is_active ? 'active' : 'inactive'}</Badge>}
+                  </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center justify-end gap-1.5">
                       {can('users.update') && <button onClick={() => openEdit(u)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit"><PencilSquareIcon className="size-4" /></button>}
-                      {can('users.delete') && !u.is_super_admin && <button onClick={() => setRemoving(u)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Remove"><TrashIcon className="size-4" /></button>}
+                      {can('users.delete') && <button onClick={() => onRemove(u)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Remove"><TrashIcon className="size-4" /></button>}
                     </div>
                   </td>
                 </tr>
@@ -108,6 +122,7 @@ export default function UsersList() {
             </tbody>
           </table>
         )}
+        {!isLoading && rows.length > 0 && <div className="border-t border-line px-3"><Pagination meta={data?.meta} onPage={setPage} /></div>}
       </Card>
 
       <Modal
@@ -143,22 +158,6 @@ export default function UsersList() {
             </select>
           </Field>
         </div>
-      </Modal>
-
-      <Modal
-        open={Boolean(removing)}
-        onClose={() => setRemoving(null)}
-        title="Remove user"
-        footer={
-          <>
-            <Button variant="ghost" size="sm" onClick={() => setRemoving(null)}>Cancel</Button>
-            <Button variant="danger" size="sm" disabled={removeM.isPending} onClick={() => removeM.mutate(removing.id)}>Remove</Button>
-          </>
-        }
-      >
-        <p className="text-sm text-muted">
-          Remove <span className="font-medium text-ink">{removing?.name}</span> from {activeCompany?.name}? Their login stays, but access to this company and its roles is revoked.
-        </p>
       </Modal>
     </div>
   );

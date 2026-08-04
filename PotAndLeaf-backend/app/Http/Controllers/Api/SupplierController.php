@@ -77,4 +77,15 @@ class SupplierController extends Controller
         $company = $request->attributes->get('company');
         abort_unless((string) $supplier->company_id === (string) $company->id, 404);
     }
+
+    public function toggleStatus(Request $request, Supplier $supplier): JsonResponse
+    {
+        $company = $request->attributes->get('company');
+        abort_unless($request->user()->hasPermission('suppliers.update', $company->id), 403);
+        abort_unless((string) $supplier->company_id === (string) $company->id, 404);
+        $data = $request->validate(['status' => ['required', 'in:active,inactive']]);
+        $supplier->update(['status' => $data['status']]);
+
+        return $this->ok(['id' => $supplier->id, 'status' => $supplier->status], 'Status updated.');
+    }
 }

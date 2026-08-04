@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -57,6 +58,30 @@ class AuthController extends Controller
             'user'      => $this->userPayload($user),
             'companies' => $this->companies($user),
         ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'name'             => ['required', 'string', 'max:150'],
+            'email'            => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone'            => ['nullable', 'string', 'max:30'],
+            'current_password' => ['nullable', 'required_with:password', 'current_password'],
+            'password'         => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        if (array_key_exists('phone', $data)) {
+            $user->phone = $data['phone'];
+        }
+        if (! empty($data['password'])) {
+            $user->password = Hash::make($data['password']);
+        }
+        $user->save();
+
+        return $this->ok(['user' => $this->userPayload($user->fresh())], 'Profile updated.');
     }
 
     public function logout(Request $request): JsonResponse

@@ -10,6 +10,9 @@ import {
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
+import { useToast } from '../../lib/toast';
+import { useConfirm } from '../../lib/confirm';
+import StatusToggle from '../../components/StatusToggle';
 import { formatCurrency } from '../../lib/format';
 
 const STATUS = [
@@ -40,6 +43,8 @@ export default function SuppliersList() {
   const { activeCompany, can } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -70,8 +75,10 @@ export default function SuppliersList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       setModalOpen(false);
+      toast.success(editing ? 'Supplier updated.' : 'Supplier created.');
     },
     onError: (err) => {
+      toast.error(err.response?.data?.message ?? 'Could not save supplier.');
       if (err.response?.status === 422) {
         const flat = {};
         Object.entries(err.response.data.errors ?? {}).forEach(
@@ -113,10 +120,17 @@ export default function SuppliersList() {
     saveMutation.mutate(form);
   }
 
-  function confirmDelete(row) {
-    if (window.confirm(`Delete ${row.name}? It can be restored later.`)) {
-      deleteMutation.mutate(row.id);
-    }
+  async function confirmDelete(row) {
+    const ok = await confirm({ title: 'Delete supplier', message: `Delete ${row.name}? It can be restored later.`, confirmLabel: 'Delete', tone: 'danger' });
+    if (!ok) return;
+    try { await api.delete(`/suppliers/${row.id}`); toast.success(`${row.name} deleted`); queryClient.invalidateQueries({ queryKey: ['suppliers'] }); }
+    catch (e) { toast.error(e.response?.data?.message ?? 'Could not delete supplier.'); }
+  }
+
+  async function onToggle(row, next) {
+    await api.patch(`/suppliers/${row.id}/status`, { status: next ? 'active' : 'inactive' });
+    toast.success(`${row.name} ${next ? 'activated' : 'deactivated'}`);
+    queryClient.invalidateQueries({ queryKey: ['suppliers'] });
   }
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -190,7 +204,7 @@ export default function SuppliersList() {
                       {formatCurrency(s.outstanding ?? s.opening_balance ?? 0)}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Badge tone={s.status}>{s.status}</Badge>
+                      {can('suppliers.update') ? <StatusToggle active={s.status === 'active'} onToggle={(next) => onToggle(s, next)} /> : <Badge tone={s.status}>{s.status}</Badge>}
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-1">
@@ -228,7 +242,7 @@ export default function SuppliersList() {
                     <div className="tnum text-xs text-muted">{s.supplier_code}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge tone={s.status}>{s.status}</Badge>
+                    {can('suppliers.update') ? <StatusToggle active={s.status === 'active'} onToggle={(next) => onToggle(s, next)} /> : <Badge tone={s.status}>{s.status}</Badge>}
                     {(s.can?.update ?? can('suppliers.update')) && (
                       <button onClick={() => openEdit(s)} className="p-1.5 text-muted" aria-label="Edit">
                         <PencilSquareIcon className="size-4" />

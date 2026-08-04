@@ -104,4 +104,16 @@ class ProductController extends Controller
     {
         abort_unless((string) $product->company_id === (string) $this->company($request)->id, 404);
     }
+
+    public function toggleStatus(Request $request, Product $product): JsonResponse
+    {
+        $company = $request->attributes->get('company');
+        abort_unless($request->user()->hasPermission('products.update', $company->id), 403);
+        abort_unless((string) $product->company_id === (string) $company->id, 404);
+
+        $data = $request->validate(['status' => ['required', 'in:active,inactive']]);
+        $product->update(['status' => $data['status']]);
+
+        return $this->ok(['id' => $product->id, 'status' => $product->status], 'Status updated.');
+    }
 }

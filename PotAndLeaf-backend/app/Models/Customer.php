@@ -18,8 +18,7 @@ class Customer extends Model
         'company_id', 'customer_code', 'name', 'type', 'email', 'phone', 'whatsapp',
         'gst_number', 'address_line1', 'address_line2', 'city', 'state', 'pincode',
         'credit_days', 'credit_limit', 'opening_balance', 'outstanding',
-        'loyalty_points', 'notes', 'status',
-    ];
+        'loyalty_points', 'notes', 'status', 'photo',];
 
     protected function casts(): array
     {

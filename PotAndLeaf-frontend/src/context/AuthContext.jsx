@@ -105,6 +105,7 @@ export function AuthProvider({ children }) {
     () => ({
       token,
       user,
+      updateUser: setUser,
       companies,
       companyId,
       activeCompany: companies.find((c) => String(c.id) === String(companyId)) ?? null,
