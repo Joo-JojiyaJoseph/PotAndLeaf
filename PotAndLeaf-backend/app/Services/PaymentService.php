@@ -62,12 +62,12 @@ class PaymentService
     }
 
     /** Confirmed purchases with paid / balance / status / due date. */
-    public function payables(int|string $companyId, ?int $supplierId = null): array
+    public function payables(int|string $companyId, int|string|null $supplierId = null): array
     {
         return Purchase::query()
             ->forCompany($companyId)
             ->where('status', 'confirmed')
-            ->when($supplierId, fn ($q) => $q->where('supplier_id', $supplierId))
+            ->when(filled($supplierId), fn ($q) => $q->where('supplier_id', $supplierId))
             ->with('supplier:id,name,credit_days')
             ->withSum('supplierPayments as paid_sum', 'amount')
             ->orderByDesc('purchase_date')

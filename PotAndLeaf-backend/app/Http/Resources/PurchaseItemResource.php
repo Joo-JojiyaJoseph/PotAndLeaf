@@ -27,6 +27,19 @@ class PurchaseItemResource extends JsonResource
             'line_total'       => (float) $this->line_total,
             'landed_alloc'     => (float) $this->landed_alloc,
             'landed_unit_cost' => (float) $this->landed_unit_cost,
+
+            'is_bulk'           => (bool) $this->is_bulk,
+            'sell_as'           => $this->sell_as,
+            'units_per_set'     => $this->units_per_set !== null ? (float) $this->units_per_set : null,
+            'split_product_id'  => $this->split_product_id,
+            'set_product_id'    => $this->set_product_id,
+            'shared_pool_group' => $this->shared_pool_group,
+            'split_product'     => $this->whenLoaded('splitProduct', fn () => $this->splitProduct ? [
+                'id' => $this->splitProduct->id, 'name' => $this->splitProduct->name, 'sku' => $this->splitProduct->sku,
+            ] : null),
+            'set_product'       => $this->whenLoaded('setProduct', fn () => $this->setProduct ? [
+                'id' => $this->setProduct->id, 'name' => $this->setProduct->name, 'sku' => $this->setProduct->sku,
+            ] : null),
         ];
     }
 }

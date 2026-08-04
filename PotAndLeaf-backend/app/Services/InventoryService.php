@@ -71,11 +71,12 @@ class InventoryService
             ->get(['id', 'sku', 'name', 'current_stock', 'reorder_level']);
     }
 
-    public function ledgerFor(int|string $companyId, string $productId): LengthAwarePaginator
+    public function ledgerFor(int|string $companyId, ?string $productId = null, ?string $referenceType = null): LengthAwarePaginator
     {
         return StockLedgerEntry::query()
             ->forCompany($companyId)
-            ->where('product_id', $productId)
+            ->when(filled($productId), fn ($q) => $q->where('product_id', $productId))
+            ->when(filled($referenceType), fn ($q) => $q->where('reference_type', $referenceType))
             ->with('product:id,sku,name')
             ->latest('occurred_at')
             ->paginate(30)

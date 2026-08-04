@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircleIcon, XCircleIcon, ArrowUturnLeftIcon, PlusIcon, TrashIcon, PrinterIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ArrowUturnLeftIcon, PlusIcon, TrashIcon, PrinterIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
 import { printRentalInvoice } from '../../lib/invoicePrint';
+import { useToast } from '../../lib/toast';
 
 const tone = { draft: 'inactive', active: 'active', returned: 'approved', cancelled: 'blocked' };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -14,6 +15,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export default function RentalDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [returning, setReturning] = useState(false);
   const [returns, setReturns] = useState({});
   const [billing, setBilling] = useState(false);
@@ -40,6 +42,11 @@ export default function RentalDetail() {
   });
   const payM = useMutation({ mutationFn: (invId) => api.post(`/rental-invoices/${invId}/paid`), onSuccess: invalidate });
   const delInvM = useMutation({ mutationFn: (invId) => api.delete(`/rental-invoices/${invId}`), onSuccess: invalidate });
+  const waM = useMutation({
+    mutationFn: (invId) => api.post(`/rental-invoices/${invId}/whatsapp`),
+    onSuccess: (res) => toast.success(res.data?.message || 'WhatsApp message sent.'),
+    onError: (err) => toast.error(err.response?.data?.message || 'Could not send WhatsApp message.'),
+  });
 
   if (isLoading) return <DetailLoading />;
   if (isError || !data) return <DetailError backTo="/rentals" />;
@@ -126,6 +133,11 @@ export default function RentalDetail() {
                     <div className="flex items-center justify-end gap-1.5">
                       {inv.status !== 'paid' && r.can?.bill && <Button size="sm" variant="outline" onClick={() => payM.mutate(inv.id)} disabled={payM.isPending}>Mark paid</Button>}
                       <button onClick={() => printRentalInvoice(r, inv)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" title="Print"><PrinterIcon className="size-4" /></button>
+                      {r.can?.bill && (
+                        <button onClick={() => waM.mutate(inv.id)} disabled={waM.isPending} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink disabled:opacity-50" title="Send via WhatsApp">
+                          <ChatBubbleLeftRightIcon className="size-4" />
+                        </button>
+                      )}
                       {r.can?.bill && <button onClick={() => delInvM.mutate(inv.id)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger"><TrashIcon className="size-4" /></button>}
                     </div>
                   </td>

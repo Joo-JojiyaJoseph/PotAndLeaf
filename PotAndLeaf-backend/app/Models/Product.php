@@ -21,6 +21,7 @@ class Product extends Model
         'reorder_level', 'opening_stock', 'current_stock',
         'length_cm', 'width_cm', 'height_cm',
         'images', 'status', 'is_rental', 'rental_daily_rate',
+        'pool_group_id', 'pool_role', 'units_per_set',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class Product extends Model
             'height_cm'         => 'decimal:2',
             'is_rental'         => 'boolean',
             'rental_daily_rate' => 'decimal:2',
+            'units_per_set'     => 'decimal:3',
         ];
     }
 
@@ -99,5 +101,11 @@ class Product extends Model
     public function getIsLowStockAttribute(): bool
     {
         return (float) $this->current_stock <= (float) $this->reorder_level;
+    }
+
+    /** Part of a shared set/unit stock pool (see PoolStockService). */
+    public function getIsPooledAttribute(): bool
+    {
+        return filled($this->pool_group_id) && filled($this->pool_role);
     }
 }

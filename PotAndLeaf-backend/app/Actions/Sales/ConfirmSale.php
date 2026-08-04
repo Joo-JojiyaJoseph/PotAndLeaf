@@ -9,12 +9,16 @@ use App\Models\Location;
 use App\Services\InventoryService;
 use App\Services\LocationStockService;
 use App\Services\LoyaltyService;
+use App\Services\PoolStockService;
+use App\Services\SupervisorCommissionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Confirming a sale draws stock down (COGS at each product's cost price), and
  * updates the customer's outstanding (credit sales) and loyalty points.
+ * Products that belong to a shared set/unit pool (see PoolStockService) are
+ * drawn from the pool instead of their own current_stock.
  */
 class ConfirmSale
 {
@@ -22,6 +26,8 @@ class ConfirmSale
         private readonly InventoryService $inventory,
         private readonly LocationStockService $locations,
         private readonly LoyaltyService $loyalty,
+        private readonly SupervisorCommissionService $supervisorCommission,
+        private readonly PoolStockService $pool,
     ) {}
 
     public function handle(Sale $sale, ?int $userId = null): Sale
@@ -45,21 +51,45 @@ class ConfirmSale
                 if (! $product) {
                     continue;
                 }
-                if ((float) $product->current_stock < (float) $item->qty) {
-                    throw ValidationException::withMessages([
-                        'items' => "Not enough stock for {$product->name}: {$product->current_stock} available, {$item->qty} required.",
-                    ]);
+
+                if ($this->pool->isPooled($product)) {
+                    $available = $this->pool->availableStock($product);
+                    if ($available < (float) $item->qty) {
+                        throw ValidationException::withMessages([
+                            'items' => "Not enough stock for {$product->name}: {$available} available, {$item->qty} required.",
+                        ]);
+                    }
+                    $this->pool->deduct(
+                        $product, (float) $item->qty, 'sale', $sale->id, "Sale {$sale->sale_no}", $userId,
+                    );
+                    $product->refresh();
+                } else {
+                    if ((float) $product->current_stock < (float) $item->qty) {
+                        throw ValidationException::withMessages([
+                            'items' => "Not enough stock for {$product->name}: {$product->current_stock} available, {$item->qty} required.",
+                        ]);
+                    }
+                    $this->inventory->post(
+                        product: $product, direction: 'out', qty: (float) $item->qty,
+                        unitCost: (float) $product->cost_price, referenceType: 'sale',
+                        referenceId: $sale->id, note: "Sale {$sale->sale_no}", userId: $userId,
+                    );
+                    $product->save();
                 }
-                $this->inventory->post(
-                    product: $product, direction: 'out', qty: (float) $item->qty,
-                    unitCost: (float) $product->cost_price, referenceType: 'sale',
-                    referenceId: $sale->id, note: "Sale {$sale->sale_no}", userId: $userId,
-                );
-                $product->save();
 
                 if ($location) {
                     $this->locations->adjust($sale->company_id, $location->id, $product->id, 'out', (float) $item->qty);
                 }
+
+                $this->supervisorCommission->accrue(
+                    $sale->company_id,
+                    $product->id,
+                    (float) $item->qty,
+                    'sale',
+                    'sale',
+                    $sale->id,
+                    (float) $item->rate,
+                );
             }
 
             if ($sale->customer_id) {

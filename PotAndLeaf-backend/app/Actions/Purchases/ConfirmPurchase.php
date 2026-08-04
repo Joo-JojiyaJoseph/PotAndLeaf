@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\Location;
 use App\Services\InventoryService;
 use App\Services\LocationStockService;
+use App\Services\SellAsFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,12 +16,16 @@ use Illuminate\Validation\ValidationException;
  * Confirming a purchase is the point stock becomes real: each line posts an
  * "in" movement to the ledger, the product's current_stock rises, and its
  * cost_price is refreshed to the landed unit cost. All within one transaction.
+ * Bulk lines with a `sell_as` strategy are delegated to
+ * SellAsFulfillmentService instead, which decides where the stock lands
+ * (set product, split units, or a shared pool of both).
  */
 class ConfirmPurchase
 {
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly LocationStockService $locations,
+        private readonly SellAsFulfillmentService $sellAs,
     ) {}
 
     public function handle(Purchase $purchase, ?int $userId = null): Purchase
@@ -49,6 +54,15 @@ class ConfirmPurchase
                     ->find($item->product_id);
 
                 if (! $product) {
+                    continue;
+                }
+
+                if ($item->is_bulk && $item->sell_as) {
+                    // Delegates entirely — the set/unit product(s) it stocks may
+                    // differ from the purchased line's own product, so the normal
+                    // location adjustment below (keyed on $product) doesn't apply.
+                    $this->sellAs->fulfil($purchase, $item, $product, $userId);
+                    $item->save();
                     continue;
                 }
 

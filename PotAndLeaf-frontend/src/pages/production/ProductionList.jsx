@@ -80,20 +80,22 @@ function BomModal({ open, onClose, products, editing }) {
   );
 }
 
-function OrderModal({ open, onClose, boms, locations }) {
+function OrderModal({ open, onClose, boms, locations, supervisors = [] }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ bom_id: '', output_quantity: '', location_id: '', order_date: today(), notes: '' });
+  const [form, setForm] = useState({ bom_id: '', output_quantity: '', location_id: '', supervisor_id: '', order_date: today(), notes: '' });
   const [errors, setErrors] = useState({});
 
   const saveM = useMutation({
     mutationFn: () => api.post('/production/orders', {
       bom_id: form.bom_id, output_quantity: Number(form.output_quantity) || 0,
-      location_id: form.location_id || null, order_date: form.order_date, notes: form.notes || null,
+      location_id: form.location_id || null,
+      supervisor_id: form.supervisor_id ? Number(form.supervisor_id) : null,
+      order_date: form.order_date, notes: form.notes || null,
     }),
     onSuccess: (res) => { handleClose(); navigate(`/production/orders/${res.data.data.id}`); },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
-  function handleClose() { setForm({ bom_id: '', output_quantity: '', location_id: '', order_date: today(), notes: '' }); setErrors({}); onClose(); }
+  function handleClose() { setForm({ bom_id: '', output_quantity: '', location_id: '', supervisor_id: '', order_date: today(), notes: '' }); setErrors({}); onClose(); }
   const err = (k) => errors[k]?.[0];
 
   return (
@@ -119,7 +121,14 @@ function OrderModal({ open, onClose, boms, locations }) {
             {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
         </Field>
+        <Field label="Supervisor (commission)" error={err('supervisor_id')}>
+          <select value={form.supervisor_id} onChange={(e) => setForm((f) => ({ ...f, supervisor_id: e.target.value }))} className={selectCls}>
+            <option value="">None</option>
+            {supervisors.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </Field>
         <Field label="Order date" required error={err('order_date')}><Input type="date" value={form.order_date} onChange={(e) => setForm((f) => ({ ...f, order_date: e.target.value }))} /></Field>
+        <div className="sm:col-span-2"><Field label="Notes" error={err('notes')}><Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></Field></div>
       </div>
     </Modal>
   );
@@ -157,6 +166,7 @@ export default function ProductionList() {
   const products = formData?.products ?? [];
   const boms = formData?.boms ?? [];
   const locations = formData?.locations ?? [];
+  const supervisors = formData?.supervisors ?? [];
   const orders = ordersQ.data?.data ?? [];
   const bomRows = bomsQ.data?.data ?? [];
 
@@ -248,7 +258,7 @@ export default function ProductionList() {
       )}
 
       <BomModal open={bomModal} onClose={() => { setBomModal(false); setEditingBom(null); }} products={products} editing={editingBom} />
-      <OrderModal open={orderModal} onClose={() => setOrderModal(false)} boms={boms} locations={locations} />
+      <OrderModal open={orderModal} onClose={() => setOrderModal(false)} boms={boms} locations={locations} supervisors={supervisors} />
     </div>
   );
 }

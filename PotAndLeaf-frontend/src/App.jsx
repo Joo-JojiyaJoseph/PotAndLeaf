@@ -39,6 +39,8 @@ import RentalsList from './pages/rentals/RentalsList';
 import RentalForm from './pages/rentals/RentalForm';
 import RentalDetail from './pages/rentals/RentalDetail';
 import ReportsPage from './pages/reports/ReportsPage';
+import ActivityMonitoringPage from './pages/activity/ActivityMonitoringPage';
+import BackupDashboardPage from './pages/activity/BackupDashboardPage';
 import BarcodeLabelsPage from './pages/products/BarcodeLabelsPage';
 import PurchaseOrdersList from './pages/purchaseOrders/PurchaseOrdersList';
 import PurchaseOrderForm from './pages/purchaseOrders/PurchaseOrderForm';
@@ -50,6 +52,7 @@ import PurchasesList from './pages/purchases/PurchasesList';
 import PurchaseForm from './pages/purchases/PurchaseForm';
 import PurchaseDetail from './pages/purchases/PurchaseDetail';
 import InventoryList from './pages/inventory/InventoryList';
+import DamageEntriesPage from './pages/inventory/DamageEntriesPage';
 import PurchaseReturnsList from './pages/purchaseReturns/PurchaseReturnsList';
 import PurchaseReturnForm from './pages/purchaseReturns/PurchaseReturnForm';
 import PurchaseReturnDetail from './pages/purchaseReturns/PurchaseReturnDetail';
@@ -75,6 +78,7 @@ export default function App() {
           <Route path="purchases/:id/edit" element={<PurchaseForm />} />
           <Route path="purchases/:id" element={<PurchaseDetail />} />
           <Route path="inventory" element={<InventoryList />} />
+          <Route path="damage-entries" element={<DamageEntriesPage />} />
           <Route path="purchase-returns" element={<PurchaseReturnsList />} />
           <Route path="purchase-returns/new" element={<PurchaseReturnForm />} />
           <Route path="purchase-returns/:id" element={<PurchaseReturnDetail />} />
@@ -111,6 +115,8 @@ export default function App() {
           <Route path="rentals/new" element={<RentalForm />} />
           <Route path="rentals/:id" element={<RentalDetail />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="activity-monitoring" element={<ActivityMonitoringPage />} />
+          <Route path="backups" element={<BackupDashboardPage />} />
           <Route path="purchase-orders" element={<PurchaseOrdersList />} />
           <Route path="purchase-orders/new" element={<PurchaseOrderForm />} />
           <Route path="purchase-orders/:id" element={<PurchaseOrderDetail />} />

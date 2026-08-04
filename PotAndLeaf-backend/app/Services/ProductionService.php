@@ -78,15 +78,16 @@ class ProductionService
         $bom = Bom::forCompany($companyId)->with('items')->findOrFail($data['bom_id']);
 
         $order = ProductionOrder::create([
-            'company_id'       => $companyId,
-            'bom_id'           => $bom->id,
+            'company_id'        => $companyId,
+            'bom_id'            => $bom->id,
             'output_product_id' => $bom->product_id,
-            'location_id'      => $data['location_id'] ?? null,
-            'order_no'         => $this->nextOrderNo($companyId),
-            'order_date'       => $data['order_date'],
-            'output_quantity'  => $data['output_quantity'],
-            'status'           => 'draft',
-            'notes'            => $data['notes'] ?? null,
+            'location_id'       => $data['location_id'] ?? null,
+            'supervisor_id'     => $data['supervisor_id'] ?? null,
+            'order_no'          => $this->nextOrderNo($companyId),
+            'order_date'        => $data['order_date'],
+            'output_quantity'   => $data['output_quantity'],
+            'status'            => 'draft',
+            'notes'             => $data['notes'] ?? null,
         ]);
 
         return $order->load(['outputProduct:id,sku,name', 'bom:id,name']);
@@ -166,10 +167,11 @@ class ProductionService
             }
 
             $order->update([
-                'total_input_cost' => round($inputCost, 2),
-                'output_unit_cost' => $unitCost,
-                'status'           => 'completed',
-                'completed_at'     => now(),
+                'total_input_cost'       => round($inputCost, 2),
+                'output_unit_cost'       => $unitCost,
+                'commission_pending_qty' => $outQty,
+                'status'                 => 'completed',
+                'completed_at'           => now(),
             ]);
 
             return $order->refresh()->load(['items', 'outputProduct:id,sku,name', 'bom:id,name']);

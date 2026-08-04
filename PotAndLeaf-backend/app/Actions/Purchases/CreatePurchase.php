@@ -70,6 +70,11 @@ class CreatePurchase
                 'line_total'       => $line['line_total'],
                 'landed_alloc'     => $line['landed_alloc'],
                 'landed_unit_cost' => $line['landed_unit_cost'],
+                'is_bulk'           => (bool) ($input[$i]['is_bulk'] ?? false),
+                'sell_as'           => $input[$i]['sell_as'] ?? null,
+                'units_per_set'     => $input[$i]['units_per_set'] ?? null,
+                'split_product_id'  => $input[$i]['split_product_id'] ?? null,
+                'set_product_id'    => $input[$i]['set_product_id'] ?? null,
             ];
         }
 

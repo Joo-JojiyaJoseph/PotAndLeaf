@@ -38,7 +38,11 @@ class PermissionRegistry
                 'purchase_returns.confirm' => 'Confirm purchase returns',
                 'purchase_returns.delete'  => 'Cancel purchase returns',
             ],
-            'Inventory'  => ['inventory.view' => 'View inventory, ledger & reports'],
+            'Inventory'  => [
+                'inventory.view' => 'View inventory, ledger & reports',
+                'damage.view'    => 'View damage entries',
+                'damage.create'  => 'Record damage / write-off entries',
+            ],
             'Advance Orders' => [
                 'advance.view'    => 'View advance orders',
                 'advance.create'  => 'Create advance orders',
@@ -53,7 +57,17 @@ class PermissionRegistry
                 'po.delete'  => 'Cancel purchase orders',
             ],
             'Reports' => [
-                'reports.view' => 'View reports & dashboard',
+                'reports.view'   => 'View reports & dashboard',
+                'reports.margin' => 'View profit margin analysis (HO)',
+                'reports.profit' => 'View approximate profit reports (HO)',
+            ],
+            'Activity Monitoring' => [
+                'activity.view' => 'View HO activity monitoring dashboard',
+            ],
+            'Backups' => [
+                'backup.view'    => 'View & download database backups',
+                'backup.run'     => 'Run manual backups',
+                'backup.restore' => 'Restore the database from a backup',
             ],
             'Plant Rental' => [
                 'rental.view'     => 'View rentals',

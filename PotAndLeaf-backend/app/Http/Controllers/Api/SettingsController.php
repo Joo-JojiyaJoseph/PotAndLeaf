@@ -39,11 +39,13 @@ class SettingsController extends Controller
             'discount_ceiling_percent'   => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'reorder_alert_default'      => ['sometimes', 'numeric', 'min:0'],
             'website_integration'        => ['sometimes', 'in:0,1,true,false'],
+            'whatsapp_enabled'           => ['sometimes', 'in:0,1,true,false'],
         ]);
 
-        if (isset($data['website_integration'])) {
-            $v = $data['website_integration'];
-            $data['website_integration'] = in_array($v, [true, 'true', '1', 1], true) ? '1' : '0';
+        foreach (['website_integration', 'whatsapp_enabled'] as $flag) {
+            if (isset($data[$flag])) {
+                $data[$flag] = in_array($data[$flag], [true, 'true', '1', 1], true) ? '1' : '0';
+            }
         }
 
         return $this->ok($this->settings->setMany($company->id, $data), 'Settings saved.');

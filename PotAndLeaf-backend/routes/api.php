@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityMonitoringController;
+use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\DamageEntryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\BulkSplitController;
@@ -84,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('commission/rules', [CommissionController::class, 'rules']);
         Route::post('commission/rules', [CommissionController::class, 'upsertRule']);
         Route::get('commission/compute', [CommissionController::class, 'compute']);
+        Route::get('commission/supervisor-entries', [CommissionController::class, 'supervisorEntries']);
         Route::get('commission/payouts', [CommissionController::class, 'payouts']);
         Route::post('commission/payouts', [CommissionController::class, 'storePayout']);
         Route::delete('commission/payouts/{commissionPayout}', [CommissionController::class, 'destroyPayout']);
@@ -160,6 +164,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('rentals/{rental}/invoices', [RentalController::class, 'generateInvoice']);
         Route::delete('rentals/{rental}', [RentalController::class, 'destroy']);
         Route::post('rental-invoices/{rentalInvoice}/paid', [RentalController::class, 'markInvoicePaid']);
+        Route::get('rental-invoices/{rentalInvoice}/invoice.pdf', [InvoicePdfController::class, 'rental']);
+        Route::post('rental-invoices/{rentalInvoice}/whatsapp', [RentalController::class, 'sendInvoiceWhatsapp']);
         Route::delete('rental-invoices/{rentalInvoice}', [RentalController::class, 'deleteInvoice']);
 
         // Module 10 — Advance orders (customer pre-bookings)
@@ -187,7 +193,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('masters/{type}/{id}', [MasterDataController::class, 'destroy'])->whereIn('type', ['categories', 'brands', 'units']);
 
         // Module 11 — Reports
+        Route::get('reports/form-data', [ReportController::class, 'formData']);
         Route::get('reports/dashboard', [ReportController::class, 'dashboard']);
+        Route::get('reports/dashboard/export', [ReportController::class, 'exportDashboard']);
+        Route::get('reports/margin', [ReportController::class, 'margin']);
+        Route::get('reports/margin/export', [ReportController::class, 'exportMargin']);
+        Route::get('reports/profit', [ReportController::class, 'profit']);
+        Route::get('reports/profit/export', [ReportController::class, 'exportProfit']);
+
+        Route::get('activity-monitoring', [ActivityMonitoringController::class, 'index']);
+
+        Route::get('backups', [BackupController::class, 'index']);
+        Route::post('backups/run', [BackupController::class, 'run']);
+        Route::get('backups/{filename}/download', [BackupController::class, 'download'])->where('filename', '[\w\-.]+');
+        Route::post('backups/{filename}/restore', [BackupController::class, 'restore'])->where('filename', '[\w\-.]+');
 
         // Module 02 — Production / BOM
         Route::get('production/form-data', [ProductionController::class, 'formData']);
@@ -220,6 +239,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('inventory/ledger', [InventoryController::class, 'ledger']);
         Route::get('inventory/valuation', [InventoryController::class, 'valuation']);
         Route::get('inventory/movement', [InventoryController::class, 'movement']);
+
+        Route::get('damage-entries/form-data', [DamageEntryController::class, 'formData']);
+        Route::get('damage-entries', [DamageEntryController::class, 'index']);
+        Route::post('damage-entries', [DamageEntryController::class, 'store']);
 
         // Milestone 2 — Purchase returns (debit note + stock reversal)
         Route::get('purchase-returns/source', [PurchaseReturnController::class, 'source']);

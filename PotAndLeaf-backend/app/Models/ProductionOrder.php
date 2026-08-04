@@ -15,19 +15,20 @@ class ProductionOrder extends Model
     use HasAuditColumns, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id', 'bom_id', 'output_product_id', 'location_id', 'order_no',
-        'order_date', 'output_quantity', 'total_input_cost', 'output_unit_cost',
+        'company_id', 'bom_id', 'output_product_id', 'location_id', 'supervisor_id', 'order_no',
+        'order_date', 'output_quantity', 'commission_pending_qty', 'total_input_cost', 'output_unit_cost',
         'status', 'notes', 'completed_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'order_date'       => 'date',
-            'output_quantity'  => 'decimal:3',
-            'total_input_cost' => 'decimal:2',
-            'output_unit_cost' => 'decimal:4',
-            'completed_at'     => 'datetime',
+            'order_date'              => 'date',
+            'output_quantity'         => 'decimal:3',
+            'commission_pending_qty'  => 'decimal:3',
+            'total_input_cost'        => 'decimal:2',
+            'output_unit_cost'        => 'decimal:4',
+            'completed_at'            => 'datetime',
         ];
     }
 
@@ -44,6 +45,11 @@ class ProductionOrder extends Model
     public function bom(): BelongsTo
     {
         return $this->belongsTo(Bom::class);
+    }
+
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
     }
 
     public function scopeForCompany($query, int|string $companyId)

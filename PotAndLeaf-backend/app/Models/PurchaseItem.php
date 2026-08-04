@@ -14,6 +14,8 @@ class PurchaseItem extends Model
         'purchase_id', 'product_id', 'product_name', 'hsn_code', 'qty', 'rate',
         'discount', 'taxable_value', 'gst_rate', 'cgst_amount', 'sgst_amount',
         'igst_amount', 'line_total', 'landed_alloc', 'landed_unit_cost',
+        'is_bulk', 'sell_as', 'units_per_set', 'split_product_id', 'set_product_id',
+        'shared_pool_group',
     ];
 
     protected function casts(): array
@@ -30,6 +32,8 @@ class PurchaseItem extends Model
             'line_total'       => 'decimal:2',
             'landed_alloc'     => 'decimal:2',
             'landed_unit_cost' => 'decimal:4',
+            'is_bulk'          => 'boolean',
+            'units_per_set'    => 'decimal:3',
         ];
     }
 
@@ -41,5 +45,15 @@ class PurchaseItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function splitProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'split_product_id');
+    }
+
+    public function setProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'set_product_id');
     }
 }

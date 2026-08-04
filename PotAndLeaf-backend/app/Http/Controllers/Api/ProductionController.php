@@ -35,7 +35,18 @@ class ProductionController extends Controller
         $boms = $this->production->boms($company->id)
             ->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'product_name' => $b->product?->name, 'output_qty' => (float) $b->output_qty]);
 
-        return $this->ok(['products' => $products, 'locations' => $locations, 'boms' => $boms]);
+        $supervisors = \App\Models\User::query()
+            ->whereHas('companies', fn ($q) => $q->where('companies.id', $company->id))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name]);
+
+        return $this->ok([
+            'products'    => $products,
+            'locations'   => $locations,
+            'boms'        => $boms,
+            'supervisors' => $supervisors,
+        ]);
     }
 
     // BOMs

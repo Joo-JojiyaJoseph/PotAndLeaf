@@ -36,6 +36,17 @@ class StorePurchaseRequest extends FormRequest
             'items.*.rate'         => ['required', 'numeric', 'min:0'],
             'items.*.discount'     => ['nullable', 'numeric', 'min:0'],
             'items.*.gst_rate'     => ['nullable', 'numeric', 'min:0', 'max:100'],
+
+            // Sellable-as-a-set: only relevant when a line is flagged bulk.
+            'items.*.is_bulk'            => ['sometimes', 'boolean'],
+            'items.*.sell_as'            => ['nullable', Rule::in(['set_only', 'split_only', 'both'])],
+            'items.*.units_per_set'      => [
+                'nullable', 'numeric', 'gt:0',
+                'required_if:items.*.sell_as,split_only,both',
+            ],
+            // Left blank, the confirm step auto-provisions a new split/set SKU.
+            'items.*.split_product_id'   => ['nullable', 'uuid', Rule::exists('products', 'id')->where('company_id', $companyId)],
+            'items.*.set_product_id'     => ['nullable', 'uuid', Rule::exists('products', 'id')->where('company_id', $companyId)],
         ];
     }
 }

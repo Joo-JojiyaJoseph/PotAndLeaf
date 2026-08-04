@@ -62,6 +62,27 @@ class CommissionController extends Controller
         return $this->ok($this->commission->compute($company->id, (int) $validated['user_id'], $validated['period']));
     }
 
+    public function supervisorEntries(Request $request): JsonResponse
+    {
+        $company = $this->company($request);
+        $this->allow($request, 'commission.view');
+
+        $entries = $this->commission->supervisorEntries($company->id, $request->only(['user_id', 'from', 'to', 'per_page']));
+        $entries->getCollection()->transform(fn ($e) => [
+            'id'            => $e->id,
+            'user_id'       => $e->user_id,
+            'user_name'     => $e->user?->name,
+            'product_name'  => $e->product?->name,
+            'trigger_event' => $e->trigger_event,
+            'qty'           => (float) $e->qty,
+            'amount'        => (float) $e->amount,
+            'accrued_date'  => optional($e->accrued_date)->toDateString(),
+            'reference_type'=> $e->reference_type,
+        ]);
+
+        return $this->ok($entries);
+    }
+
     public function payouts(Request $request): JsonResponse
     {
         $company = $this->company($request);

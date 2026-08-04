@@ -2,12 +2,17 @@ import api, { getAuthToken, getCompanyId } from './api';
 
 /** Download a binary PDF from an authenticated API route. */
 export async function downloadPdf(path, filename) {
-  const res = await api.get(path, { responseType: 'blob' });
-  const blob = new Blob([res.data], { type: 'application/pdf' });
+  return downloadWithParams(path, undefined, filename || 'document.pdf', 'application/pdf');
+}
+
+/** Download with optional query params (PDF, CSV, sqlite…). */
+export async function downloadWithParams(path, params, filename, mime) {
+  const res = await api.get(path, { responseType: 'blob', params });
+  const blob = new Blob([res.data], mime ? { type: mime } : undefined);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename || 'document.pdf';
+  a.download = filename || 'download';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -20,7 +25,6 @@ export async function openPdf(path) {
   const blob = new Blob([res.data], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener');
-  // Revoke later so the tab can still load.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 

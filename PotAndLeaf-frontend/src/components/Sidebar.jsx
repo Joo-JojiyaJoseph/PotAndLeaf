@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   ArrowsRightLeftIcon,
   ArrowUturnLeftIcon,
+  ExclamationTriangleIcon,
   ClipboardDocumentCheckIcon,
   ScissorsIcon,
   MapPinIcon,
@@ -10,6 +11,8 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   CubeIcon,
+  ServerStackIcon,
+  SignalIcon,
   GiftIcon,
   HomeIcon,
   ReceiptRefundIcon,
@@ -38,6 +41,7 @@ const GROUPS = [
       { key: 'dashboard', label: 'Dashboard', to: '/', icon: HomeIcon, end: true },
       { key: 'purchase', label: 'Purchase', to: '/purchases', icon: ShoppingCartIcon },
       { key: 'inventory', label: 'Inventory', to: '/inventory', icon: CubeIcon },
+      { key: 'damage', label: 'Damage Entry', to: '/damage-entries', icon: ExclamationTriangleIcon },
       { key: 'purchase-returns', label: 'Purch. Returns', to: '/purchase-returns', icon: ArrowUturnLeftIcon },
       { key: 'stock-verifications', label: 'Stock Count', to: '/stock-verifications', icon: ClipboardDocumentCheckIcon },
       { key: 'bulk-splits', label: 'Bulk Split', to: '/bulk-splits', icon: ScissorsIcon },
@@ -69,6 +73,8 @@ const GROUPS = [
       { key: 'users', label: 'Users', to: '/users', icon: UserGroupIcon },
       { key: 'companies', label: 'Companies', to: '/companies', icon: BuildingOffice2Icon, superAdmin: true },
       { key: 'reports', label: 'Reports', to: '/reports', icon: ChartBarIcon },
+      { key: 'activity', label: 'Activity Monitor', to: '/activity-monitoring', icon: SignalIcon, hoOnly: true },
+      { key: 'backups', label: 'Backups', to: '/backups', icon: ServerStackIcon, hoOnly: true },
       { key: 'purchase-orders', label: 'Purchase Orders', to: '/purchase-orders', icon: ClipboardDocumentListIcon },
       { key: 'advance-orders', label: 'Advance Orders', to: '/advance-orders', icon: CalendarDaysIcon },
       { key: 'settings', label: 'Settings', to: '/settings', icon: Cog6ToothIcon },
@@ -171,7 +177,8 @@ function Item({ item }) {
 }
 
 export default function Sidebar({ open, onClose }) {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, can } = useAuth();
+  const showHo = isSuperAdmin || can('activity.view') || can('backup.view') || can('*');
   return (
     <>
       {open && (
@@ -200,9 +207,12 @@ export default function Sidebar({ open, onClose }) {
                 {group.label}
               </div>
               <div className="space-y-0.5">
-                {group.items.filter((item) => !item.superAdmin || isSuperAdmin).map((item) => (
-                  <Item key={item.key} item={item} />
-                ))}
+                {group.items
+                  .filter((item) => !item.superAdmin || isSuperAdmin)
+                  .filter((item) => !item.hoOnly || showHo)
+                  .map((item) => (
+                    <Item key={item.key} item={item} />
+                  ))}
               </div>
             </div>
           ))}

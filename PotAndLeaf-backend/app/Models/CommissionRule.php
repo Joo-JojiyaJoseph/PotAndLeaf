@@ -11,17 +11,19 @@ class CommissionRule extends Model
     use HasUuids;
 
     protected $fillable = [
-        'company_id', 'user_id', 'base_percent', 'monthly_target',
-        'target_bonus', 'notes', 'is_active',
+        'company_id', 'user_id', 'rate_type', 'base_percent', 'per_unit_amount',
+        'monthly_target', 'target_bonus', 'notes', 'is_active', 'is_supervisor',
     ];
 
     protected function casts(): array
     {
         return [
-            'base_percent'   => 'decimal:3',
-            'monthly_target' => 'decimal:2',
-            'target_bonus'   => 'decimal:2',
-            'is_active'      => 'boolean',
+            'base_percent'    => 'decimal:3',
+            'per_unit_amount' => 'decimal:4',
+            'monthly_target'  => 'decimal:2',
+            'target_bonus'    => 'decimal:2',
+            'is_active'       => 'boolean',
+            'is_supervisor'   => 'boolean',
         ];
     }
 

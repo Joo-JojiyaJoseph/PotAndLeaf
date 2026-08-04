@@ -47,7 +47,7 @@ class SupplierPaymentController extends Controller
         $company = $this->company($request);
         $this->allow($request, 'payments.view');
 
-        return $this->ok(['payables' => $this->payments->payables($company->id, $request->integer('supplier_id') ?: null)]);
+        return $this->ok(['payables' => $this->payments->payables($company->id, $request->query('supplier_id'))]);
     }
 
     public function store(StoreSupplierPaymentRequest $request): JsonResponse

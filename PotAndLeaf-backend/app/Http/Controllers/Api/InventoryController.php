@@ -50,11 +50,18 @@ class InventoryController extends Controller
     public function ledger(Request $request): JsonResponse
     {
         $company = $this->allow($request);
-        $request->validate(['product_id' => ['required', 'uuid']]);
+        $request->validate([
+            'product_id'     => ['nullable', 'uuid'],
+            'reference_type' => ['nullable', 'string', 'max:40'],
+        ]);
 
         return $this->ok(
             StockLedgerResource::collection(
-                $this->inventory->ledgerFor($company->id, $request->query('product_id'))
+                $this->inventory->ledgerFor(
+                    $company->id,
+                    $request->query('product_id'),
+                    $request->query('reference_type'),
+                )
             )
         );
     }

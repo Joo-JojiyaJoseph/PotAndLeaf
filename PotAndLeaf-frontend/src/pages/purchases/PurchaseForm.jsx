@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -9,11 +9,22 @@ import { formatCurrency } from '../../lib/format';
 import { computePurchase } from '../../lib/purchaseCalc';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const emptyLine = () => ({ product_id: '', qty: '', rate: '', discount: '', gst_rate: '' });
+const emptyLine = () => ({
+  product_id: '', qty: '', rate: '', discount: '', gst_rate: '',
+  is_bulk: false, sell_as: '', units_per_set: '', split_product_id: '', set_product_id: '',
+});
 const numInput =
   'h-9 w-full rounded-[10px] border border-line bg-surface px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-leaf/30';
 const selectCls =
   'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
+const miniSelectCls =
+  'h-9 w-full rounded-[10px] border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/30';
+
+const SELL_AS_OPTIONS = [
+  { value: 'set_only', label: 'Set only' },
+  { value: 'split_only', label: 'Split only' },
+  { value: 'both', label: 'Both (shared pool)' },
+];
 
 export default function PurchaseForm() {
   const { id } = useParams();
@@ -76,6 +87,11 @@ export default function PurchaseForm() {
         rate: it.rate,
         discount: it.discount,
         gst_rate: it.gst_rate,
+        is_bulk: Boolean(it.is_bulk),
+        sell_as: it.sell_as ?? '',
+        units_per_set: it.units_per_set || '',
+        split_product_id: it.split_product_id ?? '',
+        set_product_id: it.set_product_id ?? '',
       })),
     );
   }, [existing]);
@@ -131,6 +147,11 @@ export default function PurchaseForm() {
           rate: Number(l.rate) || 0,
           discount: Number(l.discount) || 0,
           gst_rate: Number(l.gst_rate) || 0,
+          is_bulk: Boolean(l.is_bulk),
+          sell_as: l.is_bulk ? l.sell_as || null : null,
+          units_per_set: l.is_bulk && l.sell_as ? Number(l.units_per_set) || null : null,
+          split_product_id: l.is_bulk && l.sell_as && l.sell_as !== 'set_only' ? l.split_product_id || null : null,
+          set_product_id: l.is_bulk && l.sell_as ? l.set_product_id || null : null,
         })),
     };
     try {
@@ -268,6 +289,7 @@ export default function PurchaseForm() {
                 <th className="px-3 py-2 text-right font-medium">Taxable</th>
                 <th className="px-3 py-2 text-right font-medium">Tax</th>
                 <th className="px-3 py-2 text-right font-medium">Total</th>
+                <th className="px-3 py-2 text-center font-medium">Bulk</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -276,58 +298,142 @@ export default function PurchaseForm() {
                 const c = computed.items[i] ?? {};
                 const tax = (c.cgst_amount ?? 0) + (c.sgst_amount ?? 0) + (c.igst_amount ?? 0);
                 return (
-                  <tr key={i} className="border-b border-line/60 last:border-0">
-                    <td className="px-3 py-2">
-                      <select
-                        value={line.product_id}
-                        onChange={(e) => onPickProduct(i, e.target.value)}
-                        className="h-9 w-full min-w-[180px] rounded-[10px] border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/30"
-                      >
-                        <option value="">Select…</option>
-                        {(formData?.products ?? []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.sku ? `· ${p.sku}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number" step="0.001" className={numInput}
-                        value={line.qty} onChange={(e) => setLine(i, { qty: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number" step="0.01" className={numInput}
-                        value={line.rate} onChange={(e) => setLine(i, { rate: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number" step="0.01" className={numInput}
-                        value={line.discount} onChange={(e) => setLine(i, { discount: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="number" step="0.01" className={numInput}
-                        value={line.gst_rate} onChange={(e) => setLine(i, { gst_rate: e.target.value })}
-                      />
-                    </td>
-                    <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(c.taxable_value ?? 0)}</td>
-                    <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(tax)}</td>
-                    <td className="tnum px-3 py-2 text-right font-medium">{formatCurrency(c.line_total ?? 0)}</td>
-                    <td className="px-3 py-2">
-                      <button
-                        onClick={() => removeLine(i)}
-                        className="rounded-md p-1.5 text-muted hover:bg-paper hover:text-danger"
-                        aria-label="Remove line"
-                      >
-                        <TrashIcon className="size-4" />
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={i}>
+                    <tr className={line.is_bulk ? 'border-b-0' : 'border-b border-line/60 last:border-0'}>
+                      <td className="px-3 py-2">
+                        <select
+                          value={line.product_id}
+                          onChange={(e) => onPickProduct(i, e.target.value)}
+                          className="h-9 w-full min-w-[180px] rounded-[10px] border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/30"
+                        >
+                          <option value="">Select…</option>
+                          {(formData?.products ?? []).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} {p.sku ? `· ${p.sku}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number" step="0.001" className={numInput}
+                          value={line.qty} onChange={(e) => setLine(i, { qty: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number" step="0.01" className={numInput}
+                          value={line.rate} onChange={(e) => setLine(i, { rate: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number" step="0.01" className={numInput}
+                          value={line.discount} onChange={(e) => setLine(i, { discount: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number" step="0.01" className={numInput}
+                          value={line.gst_rate} onChange={(e) => setLine(i, { gst_rate: e.target.value })}
+                        />
+                      </td>
+                      <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(c.taxable_value ?? 0)}</td>
+                      <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(tax)}</td>
+                      <td className="tnum px-3 py-2 text-right font-medium">{formatCurrency(c.line_total ?? 0)}</td>
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={line.is_bulk}
+                          onChange={(e) => setLine(i, {
+                            is_bulk: e.target.checked,
+                            sell_as: e.target.checked ? line.sell_as : '',
+                          })}
+                          className="size-4 rounded border-line text-leaf focus:ring-leaf/40"
+                          title="This line is a bulk purchase (case/bag of multiple sellable units)"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          onClick={() => removeLine(i)}
+                          className="rounded-md p-1.5 text-muted hover:bg-paper hover:text-danger"
+                          aria-label="Remove line"
+                        >
+                          <TrashIcon className="size-4" />
+                        </button>
+                      </td>
+                    </tr>
+                    {line.is_bulk && (
+                      <tr className="border-b border-line/60 bg-leaf-soft/30 last:border-0">
+                        <td colSpan={10} className="px-3 pb-3 pt-1">
+                          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3">
+                            <div className="min-w-[160px]">
+                              <span className="mb-1 block text-xs font-medium text-muted">Sell as</span>
+                              <select
+                                value={line.sell_as}
+                                onChange={(e) => setLine(i, { sell_as: e.target.value })}
+                                className={miniSelectCls}
+                              >
+                                <option value="">Select…</option>
+                                {SELL_AS_OPTIONS.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            {line.sell_as && line.sell_as !== 'set_only' && (
+                              <div className="w-[140px]">
+                                <span className="mb-1 block text-xs font-medium text-muted">Units per set</span>
+                                <input
+                                  type="number" step="0.001" min="0" className={numInput}
+                                  placeholder="e.g. 100"
+                                  value={line.units_per_set}
+                                  onChange={(e) => setLine(i, { units_per_set: e.target.value })}
+                                />
+                              </div>
+                            )}
+                            {line.sell_as && line.sell_as !== 'set_only' && (
+                              <div className="min-w-[200px] flex-1">
+                                <span className="mb-1 block text-xs font-medium text-muted">Split (unit) product</span>
+                                <select
+                                  value={line.split_product_id}
+                                  onChange={(e) => setLine(i, { split_product_id: e.target.value })}
+                                  className={miniSelectCls}
+                                >
+                                  <option value="">Auto-create on confirm…</option>
+                                  {(formData?.products ?? []).map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name} {p.sku ? `· ${p.sku}` : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            {line.sell_as && (
+                              <div className="min-w-[200px] flex-1">
+                                <span className="mb-1 block text-xs font-medium text-muted">
+                                  Set product <span className="font-normal text-faint">(blank = this purchased product)</span>
+                                </span>
+                                <select
+                                  value={line.set_product_id}
+                                  onChange={(e) => setLine(i, { set_product_id: e.target.value })}
+                                  className={miniSelectCls}
+                                >
+                                  <option value="">This product is the set</option>
+                                  {(formData?.products ?? []).map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name} {p.sku ? `· ${p.sku}` : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            {line.sell_as === 'both' && (
+                              <p className="w-full text-xs text-muted">
+                                Set and unit stock share one physical pool: selling either draws from the same
+                                base units, so selling loose units automatically shrinks the sets still available.
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>

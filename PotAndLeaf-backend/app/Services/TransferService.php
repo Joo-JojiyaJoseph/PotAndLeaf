@@ -10,7 +10,10 @@ use Illuminate\Validation\ValidationException;
 
 class TransferService
 {
-    public function __construct(private readonly LocationStockService $locations) {}
+    public function __construct(
+        private readonly LocationStockService $locations,
+        private readonly SupervisorCommissionService $supervisorCommission,
+    ) {}
 
     public function list(int|string $companyId, array $filters): LengthAwarePaginator
     {
@@ -83,6 +86,16 @@ class TransferService
             foreach ($transfer->items as $item) {
                 if ($item->product_id) {
                     $this->locations->adjust($transfer->company_id, $transfer->from_location_id, $item->product_id, 'out', (float) $item->qty);
+                    $product = Product::find($item->product_id);
+                    $this->supervisorCommission->accrue(
+                        $transfer->company_id,
+                        $item->product_id,
+                        (float) $item->qty,
+                        'transfer',
+                        'stock-transfer',
+                        $transfer->id,
+                        (float) ($product?->cost_price ?? 0),
+                    );
                 }
             }
 

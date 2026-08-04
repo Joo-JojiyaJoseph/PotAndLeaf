@@ -44,6 +44,10 @@ class ProductResource extends JsonResource
             'status'          => $this->status,
             'is_rental'       => (bool) $this->is_rental,
             'rental_daily_rate' => $this->rental_daily_rate !== null ? (float) $this->rental_daily_rate : null,
+            'pool_group_id'   => $this->pool_group_id,
+            'pool_role'       => $this->pool_role,
+            'units_per_set'   => $this->units_per_set !== null ? (float) $this->units_per_set : null,
+            'linked_skus'     => $this->is_pooled ? $this->linkedSkus() : [],
             'suppliers'       => $this->whenLoaded('suppliers', fn () => $this->suppliers->map(fn ($s) => [
                 'supplier_id'    => $s->id,
                 'name'           => $s->name,
@@ -55,6 +59,20 @@ class ProductResource extends JsonResource
                 'delete' => $request->user()?->can('delete', $this->resource),
             ],
         ];
+    }
+
+    /** Sibling SKUs sharing this product's stock pool (see PoolStockService). */
+    private function linkedSkus(): array
+    {
+        return \App\Models\Product::forCompany($this->company_id)
+            ->where('pool_group_id', $this->pool_group_id)
+            ->where('id', '!=', $this->id)
+            ->get(['id', 'sku', 'name', 'pool_role'])
+            ->map(fn ($p) => [
+                'id' => $p->id, 'sku' => $p->sku, 'name' => $p->name, 'pool_role' => $p->pool_role,
+            ])
+            ->values()
+            ->all();
     }
 
     private function canViewCost(Request $request): bool

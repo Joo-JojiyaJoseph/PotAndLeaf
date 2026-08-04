@@ -25,6 +25,8 @@ const GROUPS = [
     title: 'Inventory & company',
     keys: [
       { key: 'reorder_alert_default', label: 'Default reorder alert qty', type: 'number', step: '1' },
+      { key: 'daily_expense', label: 'Daily expense (₹, for approx. profit)', type: 'number', step: '0.01' },
+      { key: 'whatsapp_enabled', label: 'WhatsApp invoice sharing', type: 'toggle' },
       { key: 'website_integration', label: 'Website integration', type: 'toggle' },
     ],
   },

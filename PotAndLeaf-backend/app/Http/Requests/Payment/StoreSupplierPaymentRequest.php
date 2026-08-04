@@ -17,7 +17,7 @@ class StoreSupplierPaymentRequest extends FormRequest
         $companyId = $this->route('current_company')->id;
 
         return [
-            'supplier_id'  => ['required', Rule::exists('suppliers', 'id')->where('company_id', $companyId)],
+            'supplier_id'  => ['required', 'uuid', Rule::exists('suppliers', 'id')->where('company_id', $companyId)],
             'purchase_id'  => ['nullable', 'uuid', Rule::exists('purchases', 'id')->where('company_id', $companyId)],
             'payment_date' => ['required', 'date'],
             'amount'       => ['required', 'numeric', 'gt:0'],

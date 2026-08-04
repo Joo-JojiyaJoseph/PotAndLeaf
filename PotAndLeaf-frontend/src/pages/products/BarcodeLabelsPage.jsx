@@ -26,6 +26,7 @@ export default function BarcodeLabelsPage() {
   const rows = useMemo(() => products.map((p) => ({
     id: p.id, name: p.name, sku: p.sku, barcode: p.barcode,
     price: p.retail_price || p.mrp || 0, stock: p.current_stock,
+    poolRole: p.pool_role, linkedSkus: p.linked_skus ?? [],
     copies: copies[p.id] ?? '',
   })), [products, copies]);
 
@@ -78,7 +79,16 @@ export default function BarcodeLabelsPage() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
-                <td className="px-4 py-2 font-medium">{r.name}<div className="text-xs text-muted">{r.sku}</div></td>
+                <td className="px-4 py-2 font-medium">
+                  {r.name}
+                  <div className="text-xs text-muted">{r.sku}</div>
+                  {r.poolRole && (
+                    <div className="mt-0.5 text-[11px] text-leaf-hover">
+                      {r.poolRole === 'set' ? 'Set' : 'Unit'} SKU
+                      {r.linkedSkus.length > 0 && ` · linked: ${r.linkedSkus.map((s) => s.sku).join(', ')}`}
+                    </div>
+                  )}
+                </td>
                 <td className="tnum px-4 py-2 text-xs text-muted">{r.barcode || <span className="text-danger">none</span>}</td>
                 <td className="tnum px-4 py-2 text-right text-muted">{formatCurrency(r.price)}</td>
                 <td className="tnum px-4 py-2 text-right text-muted">{r.stock}</td>

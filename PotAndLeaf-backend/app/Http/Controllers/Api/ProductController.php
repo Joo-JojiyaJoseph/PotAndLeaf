@@ -29,8 +29,11 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->forCompany($company->id)
-            ->with('unit:id,short_name,name')
+            ->with(['unit:id,short_name,name', 'category:id,name'])
             ->when(filled($request->query('search')), fn ($q) => $q->search($request->query('search')))
+            ->when(filled($request->query('category_id')), fn ($q) => $q->where('category_id', $request->query('category_id')))
+            ->when(filled($request->query('status')), fn ($q) => $q->where('status', $request->query('status')))
+            ->when($request->boolean('low_only'), fn ($q) => $q->whereColumn('current_stock', '<=', 'reorder_level'))
             ->orderBy('name')
             ->paginate(min((int) $request->query('per_page', 20), 100))
             ->withQueryString();

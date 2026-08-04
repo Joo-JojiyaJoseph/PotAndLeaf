@@ -34,13 +34,18 @@ function RecordPaymentModal({ open, onClose, prefill }) {
   }
 
   const saveM = useMutation({
-    mutationFn: () => api.post('/supplier-payments', {
-      supplier_id: Number(form.supplier_id),
-      purchase_id: form.purchase_id || null,
-      amount: Number(form.amount) || 0,
-      mode: form.mode, payment_date: form.payment_date,
-      reference: form.reference || null, notes: form.notes || null,
-    }),
+    mutationFn: () => {
+      if (!form.supplier_id) {
+        return Promise.reject({ response: { data: { errors: { supplier_id: ['Please select a supplier.'] } } } });
+      }
+      return api.post('/supplier-payments', {
+        supplier_id: form.supplier_id,
+        purchase_id: form.purchase_id || null,
+        amount: Number(form.amount) || 0,
+        mode: form.mode, payment_date: form.payment_date,
+        reference: form.reference || null, notes: form.notes || null,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier-payments'] });
       queryClient.invalidateQueries({ queryKey: ['payables'] });

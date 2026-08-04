@@ -15,6 +15,8 @@ class SettingsService
         'discount_ceiling_percent'     => '20',    // max line/bill discount % by role default
         'reorder_alert_default'        => '10',    // default reorder level hint
         'website_integration'          => '0',     // company toggle
+        'whatsapp_enabled'             => '1',     // allow sending invoices via WhatsApp
+        'daily_expense'                => '0',     // flat daily expense for approx profit reports
     ];
 
     /** @return array<string, string> */

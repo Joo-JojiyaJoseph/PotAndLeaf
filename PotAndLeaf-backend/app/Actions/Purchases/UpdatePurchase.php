@@ -67,6 +67,11 @@ class UpdatePurchase
                     'line_total'       => $line['line_total'],
                     'landed_alloc'     => $line['landed_alloc'],
                     'landed_unit_cost' => $line['landed_unit_cost'],
+                    'is_bulk'           => (bool) ($data['items'][$i]['is_bulk'] ?? false),
+                    'sell_as'           => $data['items'][$i]['sell_as'] ?? null,
+                    'units_per_set'     => $data['items'][$i]['units_per_set'] ?? null,
+                    'split_product_id'  => $data['items'][$i]['split_product_id'] ?? null,
+                    'set_product_id'    => $data['items'][$i]['set_product_id'] ?? null,
                 ];
             }
             $purchase->items()->createMany($rows);
