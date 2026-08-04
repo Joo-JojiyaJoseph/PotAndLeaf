@@ -18,6 +18,8 @@ use App\Repositories\Eloquent\ProductRepository;
 use App\Repositories\Eloquent\PurchaseRepository;
 use App\Repositories\Eloquent\PurchaseReturnRepository;
 use App\Repositories\Eloquent\RoleRepository;
+use App\Repositories\Contracts\SalesReturnRepositoryInterface;
+use App\Repositories\Eloquent\SalesReturnRepository;
 use App\Repositories\Eloquent\StockVerificationRepository;
 use App\Repositories\Eloquent\SupplierRepository;
 use Illuminate\Support\ServiceProvider;
@@ -38,6 +40,7 @@ class RepositoryServiceProvider extends ServiceProvider
         SaleRepositoryInterface::class => SaleRepository::class,
         PurchaseRepositoryInterface::class => PurchaseRepository::class,
         PurchaseReturnRepositoryInterface::class => PurchaseReturnRepository::class,
+        SalesReturnRepositoryInterface::class => SalesReturnRepository::class,
         StockVerificationRepositoryInterface::class => StockVerificationRepository::class,
         RoleRepositoryInterface::class     => RoleRepository::class,
     ];

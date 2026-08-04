@@ -15,6 +15,7 @@ class UpdateProduct
     {
         return DB::transaction(function () use ($product, $data) {
             $suppliers = $this->pullSuppliers($data);
+            $data = $this->normalizeDecimals($data);
 
             // Stock is moved by inventory transactions, never edited directly,
             // so opening_stock changes don't touch current_stock here.
@@ -23,6 +24,21 @@ class UpdateProduct
 
             return $updated->load('suppliers');
         });
+    }
+
+    /** Coalesce null pricing/stock into 0 — DB columns are NOT NULL. */
+    private function normalizeDecimals(array $data): array
+    {
+        foreach ([
+            'gst_rate', 'mrp', 'cost_price', 'dealer_price',
+            'wholesale_price', 'retail_price', 'reorder_level', 'opening_stock',
+        ] as $field) {
+            if (array_key_exists($field, $data) && ($data[$field] === null || $data[$field] === '')) {
+                $data[$field] = 0;
+            }
+        }
+
+        return $data;
     }
 
     private function pullSuppliers(array &$data): array

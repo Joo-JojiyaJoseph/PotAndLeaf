@@ -8,19 +8,20 @@ use App\Models\Sale;
 use App\Models\Location;
 use App\Services\InventoryService;
 use App\Services\LocationStockService;
+use App\Services\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Confirming a sale draws stock down (COGS at each product's cost price), and
- * updates the customer's outstanding (credit sales) and loyalty points
- * (1 point per ₹100 of bill value). Guarded against overselling.
+ * updates the customer's outstanding (credit sales) and loyalty points.
  */
 class ConfirmSale
 {
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly LocationStockService $locations,
+        private readonly LoyaltyService $loyalty,
     ) {}
 
     public function handle(Sale $sale, ?int $userId = null): Sale
@@ -32,7 +33,6 @@ class ConfirmSale
         return DB::transaction(function () use ($sale, $userId) {
             $sale->loadMissing('items');
 
-            // Which location this bill draws from (falls back to the default).
             $location = $sale->location_id
                 ? Location::forCompany($sale->company_id)->find($sale->location_id)
                 : $this->locations->defaultLocation($sale->company_id);
@@ -65,17 +65,32 @@ class ConfirmSale
             if ($sale->customer_id) {
                 $customer = Customer::forCompany($sale->company_id)->lockForUpdate()->find($sale->customer_id);
                 if ($customer) {
+                    $due = max(0, (float) $sale->grand_total - (float) $sale->loyalty_discount);
                     if ($sale->payment_mode === 'credit') {
-                        $customer->outstanding = (float) $customer->outstanding + ((float) $sale->grand_total - (float) $sale->amount_paid);
+                        $customer->outstanding = (float) $customer->outstanding + ($due - (float) $sale->amount_paid);
+                        $customer->save();
                     }
-                    $customer->loyalty_points = (int) $customer->loyalty_points + (int) floor((float) $sale->grand_total / 100);
-                    $customer->save();
+
+                    $redeemed = (int) $sale->loyalty_points_redeemed;
+                    if ($redeemed > 0) {
+                        if ((int) $customer->loyalty_points < $redeemed) {
+                            throw ValidationException::withMessages([
+                                'loyalty_points_redeemed' => 'Customer no longer has enough loyalty points.',
+                            ]);
+                        }
+                        $this->loyalty->postRedeem($customer, $redeemed, $sale);
+                        $customer->refresh();
+                    }
+
+                    $earnBase = max(0, (float) $sale->grand_total - (float) $sale->loyalty_discount);
+                    $earned = $this->loyalty->pointsEarned($sale->company_id, $earnBase);
+                    $this->loyalty->postEarn($customer, $earned, $sale);
                 }
             }
 
             $sale->update(['status' => 'confirmed', 'confirmed_at' => now()]);
 
-            return $sale->refresh()->load(['items', 'customer:id,name,type']);
+            return $sale->refresh()->load(['items', 'customer:id,name,type,loyalty_points']);
         });
     }
 }

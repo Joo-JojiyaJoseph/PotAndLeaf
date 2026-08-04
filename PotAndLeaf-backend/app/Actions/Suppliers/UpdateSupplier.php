@@ -4,6 +4,7 @@ namespace App\Actions\Suppliers;
 
 use App\Models\Supplier;
 use App\Repositories\Contracts\SupplierRepositoryInterface;
+use App\Support\Media\MediaStorage;
 use Illuminate\Support\Facades\DB;
 
 class UpdateSupplier
@@ -16,12 +17,11 @@ class UpdateSupplier
     public function handle(Supplier $supplier, array $data): Supplier
     {
         return DB::transaction(function () use ($supplier, $data) {
-            $updated = $this->suppliers->update($supplier, $data);
+            if (array_key_exists('photo', $data)) {
+                $data['photo'] = MediaStorage::replace($supplier->photo, $data['photo']);
+            }
 
-            // event(new SupplierUpdated($updated));
-            // activity()->performedOn($updated)->log('updated');
-
-            return $updated;
+            return $this->suppliers->update($supplier, $data);
         });
     }
 }

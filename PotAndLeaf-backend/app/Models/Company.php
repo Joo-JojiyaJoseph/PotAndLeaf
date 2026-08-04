@@ -13,11 +13,18 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'code', 'legal_name', 'gst_number', 'state', 'state_code',
-        'address', 'phone', 'email', 'is_active', 'logo', 'description',];
+        'address', 'phone', 'email', 'is_active', 'logo', 'description',
+        'username', 'password',
+    ];
+
+    protected $hidden = ['password'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'password'  => 'hashed',
+        ];
     }
 
     public function users(): BelongsToMany

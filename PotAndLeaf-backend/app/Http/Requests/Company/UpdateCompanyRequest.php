@@ -8,10 +8,24 @@ class UpdateCompanyRequest extends StoreCompanyRequest
 {
     public function rules(): array
     {
-        $rules = parent::rules();
-        $rules['code'] = ['required', 'string', 'max:30',
-            Rule::unique('companies', 'code')->whereNull('deleted_at')->ignore($this->route('company')->id)];
+        $id = $this->route('company')->id;
 
-        return $rules;
+        return [
+            'name'        => ['required', 'string', 'max:150'],
+            'code'        => ['required', 'string', 'max:30', Rule::unique('companies', 'code')->whereNull('deleted_at')->ignore($id)],
+            'legal_name'  => ['nullable', 'string', 'max:200'],
+            'gst_number'  => ['nullable', 'string', 'max:20'],
+            'state'       => ['nullable', 'string', 'max:60'],
+            'state_code'  => ['nullable', 'string', 'max:2'],
+            'address'     => ['nullable', 'string', 'max:500'],
+            'phone'       => ['nullable', 'string', 'max:20'],
+            'email'       => ['nullable', 'email', 'max:150'],
+            'username'    => ['nullable', 'string', 'max:80', Rule::unique('companies', 'username')->whereNull('deleted_at')->ignore($id)],
+            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
+            'logo'        => ['nullable', 'string', 'max:500'],
+            'photo'       => ['nullable', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'is_active'   => ['boolean'],
+        ];
     }
 }

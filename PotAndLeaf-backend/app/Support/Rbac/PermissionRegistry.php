@@ -27,7 +27,10 @@ class PermissionRegistry
         return [
             'System'     => ['*' => 'Full access (all modules)'],
             'Suppliers'  => $crud('suppliers', 'suppliers') + ['suppliers.force-delete' => 'Permanently delete suppliers'],
-            'Products'   => $crud('products', 'products') + ['products.force-delete' => 'Permanently delete products'],
+            'Products'   => $crud('products', 'products') + [
+                'products.force-delete' => 'Permanently delete products',
+                'products.view_cost'    => 'View product cost price (HO)',
+            ],
             'Purchases'  => $crud('purchases', 'purchases') + ['purchases.confirm' => 'Confirm purchases'],
             'Purchase Returns' => [
                 'purchase_returns.view'    => 'View purchase returns',
@@ -99,6 +102,12 @@ class PermissionRegistry
                 'sales.confirm' => 'Confirm sales',
                 'sales.delete'  => 'Cancel sales',
             ],
+            'Sales Returns' => [
+                'sales_returns.view'    => 'View sales returns',
+                'sales_returns.create'  => 'Create sales returns',
+                'sales_returns.confirm' => 'Confirm sales returns',
+                'sales_returns.delete'  => 'Cancel sales returns',
+            ],
             'Customers'  => $crud('customers', 'customers'),
             'Supplier Payments' => [
                 'payments.view'   => 'View supplier payments',
@@ -125,6 +134,10 @@ class PermissionRegistry
                 'users.create' => 'Create users',
                 'users.update' => 'Edit users',
                 'users.delete' => 'Remove users',
+            ],
+            'Settings' => [
+                'settings.view'   => 'View company settings',
+                'settings.update' => 'Update company settings',
             ],
         ];
     }

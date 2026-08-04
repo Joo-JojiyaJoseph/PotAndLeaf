@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\Location;
 use App\Services\InventoryService;
 use App\Services\LocationStockService;
+use App\Services\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 
 class CancelSale
@@ -15,6 +16,7 @@ class CancelSale
     public function __construct(
         private readonly InventoryService $inventory,
         private readonly LocationStockService $locations,
+        private readonly LoyaltyService $loyalty,
     ) {}
 
     public function handle(Sale $sale, ?int $userId = null): Sale
@@ -50,11 +52,12 @@ class CancelSale
                 if ($sale->customer_id) {
                     $customer = Customer::forCompany($sale->company_id)->lockForUpdate()->find($sale->customer_id);
                     if ($customer) {
+                        $due = max(0, (float) $sale->grand_total - (float) $sale->loyalty_discount);
                         if ($sale->payment_mode === 'credit') {
-                            $customer->outstanding = (float) $customer->outstanding - ((float) $sale->grand_total - (float) $sale->amount_paid);
+                            $customer->outstanding = (float) $customer->outstanding - ($due - (float) $sale->amount_paid);
+                            $customer->save();
                         }
-                        $customer->loyalty_points = max(0, (int) $customer->loyalty_points - (int) floor((float) $sale->grand_total / 100));
-                        $customer->save();
+                        $this->loyalty->reverseForSale($customer, $sale);
                     }
                 }
             }

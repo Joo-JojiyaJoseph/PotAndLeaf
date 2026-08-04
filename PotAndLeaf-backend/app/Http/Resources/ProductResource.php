@@ -26,16 +26,24 @@ class ProductResource extends JsonResource
             'unit'            => $this->whenLoaded('unit', fn () => $this->unit?->short_name ?? $this->unit?->name),
             'gst_rate'        => (float) $this->gst_rate,
             'mrp'             => (float) $this->mrp,
-            'cost_price'      => (float) $this->cost_price,
+            'cost_price'      => $this->when(
+                $this->canViewCost($request),
+                (float) $this->cost_price,
+            ),
             'dealer_price'    => (float) $this->dealer_price,
             'wholesale_price' => (float) $this->wholesale_price,
             'retail_price'    => (float) $this->retail_price,
             'reorder_level'   => (float) $this->reorder_level,
             'opening_stock'   => (float) $this->opening_stock,
             'current_stock'   => (float) $this->current_stock,
+            'length_cm'       => $this->length_cm !== null ? (float) $this->length_cm : null,
+            'width_cm'        => $this->width_cm !== null ? (float) $this->width_cm : null,
+            'height_cm'       => $this->height_cm !== null ? (float) $this->height_cm : null,
             'is_low_stock'    => $this->is_low_stock,
             'images'          => $this->images ?? [],
             'status'          => $this->status,
+            'is_rental'       => (bool) $this->is_rental,
+            'rental_daily_rate' => $this->rental_daily_rate !== null ? (float) $this->rental_daily_rate : null,
             'suppliers'       => $this->whenLoaded('suppliers', fn () => $this->suppliers->map(fn ($s) => [
                 'supplier_id'    => $s->id,
                 'name'           => $s->name,
@@ -47,5 +55,20 @@ class ProductResource extends JsonResource
                 'delete' => $request->user()?->can('delete', $this->resource),
             ],
         ];
+    }
+
+    private function canViewCost(Request $request): bool
+    {
+        $user = $request->user();
+        if (! $user) {
+            return false;
+        }
+        if ((bool) $user->is_super_admin) {
+            return true;
+        }
+        $companyId = $this->company_id;
+
+        return $user->hasPermission('*', $companyId)
+            || $user->hasPermission('products.view_cost', $companyId);
     }
 }

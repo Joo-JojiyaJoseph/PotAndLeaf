@@ -19,6 +19,7 @@ class CreateProduct
     {
         return DB::transaction(function () use ($companyId, $data) {
             $suppliers = $this->pullSuppliers($data);
+            $data = $this->normalizeDecimals($data);
 
             if (empty($data['barcode'])) {
                 $data['barcode'] = $this->barcodes->forProduct($companyId);
@@ -26,17 +27,29 @@ class CreateProduct
 
             $product = $this->products->create([
                 ...$data,
-                'company_id'       => $companyId,
+                'company_id'    => $companyId,
                 'current_stock' => $data['opening_stock'] ?? 0,
             ]);
 
             $product->suppliers()->sync($suppliers);
 
-            // Side effects: opening-stock ledger entry, barcode generation,
-            // low-stock check, activity log — hook them in here later.
-
             return $product->load('suppliers');
         });
+    }
+
+    /** Coalesce null pricing/stock into 0 — DB columns are NOT NULL. */
+    private function normalizeDecimals(array $data): array
+    {
+        foreach ([
+            'gst_rate', 'mrp', 'cost_price', 'dealer_price',
+            'wholesale_price', 'retail_price', 'reorder_level', 'opening_stock',
+        ] as $field) {
+            if (! array_key_exists($field, $data) || $data[$field] === null || $data[$field] === '') {
+                $data[$field] = 0;
+            }
+        }
+
+        return $data;
     }
 
     /**

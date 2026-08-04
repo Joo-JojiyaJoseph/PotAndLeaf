@@ -31,6 +31,7 @@ class StoreCustomerRequest extends FormRequest
             'opening_balance' => ['nullable', 'numeric'],
             'notes'           => ['nullable', 'string', 'max:2000'],
             'status'          => ['required', 'in:active,inactive,blocked'],
+            'photo'           => ['nullable', 'string', 'max:500'],
         ];
     }
 }

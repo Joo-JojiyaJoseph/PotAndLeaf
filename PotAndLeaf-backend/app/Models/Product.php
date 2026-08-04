@@ -20,25 +20,27 @@ class Product extends Model
         'gst_rate', 'mrp', 'cost_price', 'dealer_price', 'wholesale_price', 'retail_price',
         'reorder_level', 'opening_stock', 'current_stock',
         'length_cm', 'width_cm', 'height_cm',
-        'images', 'status',
+        'images', 'status', 'is_rental', 'rental_daily_rate',
     ];
 
     protected function casts(): array
     {
         return [
-            'images'          => 'array',
-            'gst_rate'        => 'decimal:2',
-            'mrp'             => 'decimal:2',
-            'cost_price'      => 'decimal:2',
-            'dealer_price'    => 'decimal:2',
-            'wholesale_price' => 'decimal:2',
-            'retail_price'    => 'decimal:2',
-            'reorder_level'   => 'decimal:2',
-            'opening_stock'   => 'decimal:2',
-            'current_stock'   => 'decimal:2',
-            'length_cm'       => 'decimal:2',
-            'width_cm'        => 'decimal:2',
-            'height_cm'       => 'decimal:2',
+            'images'            => 'array',
+            'gst_rate'          => 'decimal:2',
+            'mrp'               => 'decimal:2',
+            'cost_price'        => 'decimal:2',
+            'dealer_price'      => 'decimal:2',
+            'wholesale_price'   => 'decimal:2',
+            'retail_price'      => 'decimal:2',
+            'reorder_level'     => 'decimal:2',
+            'opening_stock'     => 'decimal:2',
+            'current_stock'     => 'decimal:2',
+            'length_cm'         => 'decimal:2',
+            'width_cm'          => 'decimal:2',
+            'height_cm'         => 'decimal:2',
+            'is_rental'         => 'boolean',
+            'rental_daily_rate' => 'decimal:2',
         ];
     }
 

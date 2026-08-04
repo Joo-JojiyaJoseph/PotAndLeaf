@@ -21,10 +21,13 @@ use App\Http\Controllers\Api\AdvanceOrderController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\PurchaseReturnController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\SalesReturnController;
+use App\Http\Controllers\Api\InvoicePdfController;
 use App\Http\Controllers\Api\SupplierPaymentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\StockVerificationController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Middleware\ResolveApiCompany;
 use Illuminate\Support\Facades\Route;
@@ -54,7 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Company management (HO super admin only — not company-scoped)
     Route::get('companies', [CompanyController::class, 'index']);
-        Route::patch('companies/{company}/status', [CompanyController::class, 'toggleStatus']);
+    Route::patch('companies/{company}/status', [CompanyController::class, 'toggleStatus']);
+    Route::post('companies/{company}/reset-password', [CompanyController::class, 'resetPassword']);
     Route::post('companies', [CompanyController::class, 'store']);
     Route::get('companies/{company}', [CompanyController::class, 'show']);
     Route::put('companies/{company}', [CompanyController::class, 'update']);
@@ -67,9 +71,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('suppliers', [SupplierController::class, 'index']);
         Route::post('suppliers', [SupplierController::class, 'store']);
+        Route::get('suppliers/{supplier}/purchase-history', [SupplierController::class, 'purchaseHistory']);
         Route::get('suppliers/{supplier}', [SupplierController::class, 'show']);
         Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
         Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy']);
+
+        Route::get('settings', [SettingsController::class, 'show']);
+        Route::put('settings', [SettingsController::class, 'update']);
 
         // Module 07 — Commission
         Route::get('commission/form-data', [CommissionController::class, 'formData']);
@@ -98,13 +106,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('sales/form-data', [SaleController::class, 'formData']);
         Route::get('sales', [SaleController::class, 'index']);
         Route::post('sales', [SaleController::class, 'store']);
+        Route::get('sales/{sale}/invoice.pdf', [InvoicePdfController::class, 'sale']);
         Route::get('sales/{sale}', [SaleController::class, 'show']);
         Route::post('sales/{sale}/confirm', [SaleController::class, 'confirm']);
         Route::delete('sales/{sale}', [SaleController::class, 'destroy']);
 
+        Route::get('sales-returns/source', [SalesReturnController::class, 'source']);
+        Route::get('sales-returns', [SalesReturnController::class, 'index']);
+        Route::post('sales-returns', [SalesReturnController::class, 'store']);
+        Route::get('sales-returns/{salesReturn}', [SalesReturnController::class, 'show']);
+        Route::post('sales-returns/{salesReturn}/confirm', [SalesReturnController::class, 'confirm']);
+        Route::delete('sales-returns/{salesReturn}', [SalesReturnController::class, 'destroy']);
+
         // Module 12 — Customer master (CRUD)
         Route::get('customers', [CustomerController::class, 'index']);
         Route::post('customers', [CustomerController::class, 'store']);
+        Route::get('customers/{customer}/purchase-history', [CustomerController::class, 'purchaseHistory']);
         Route::get('customers/{customer}', [CustomerController::class, 'show']);
         Route::put('customers/{customer}', [CustomerController::class, 'update']);
         Route::delete('customers/{customer}', [CustomerController::class, 'destroy']);
@@ -126,6 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('purchases/form-data', [PurchaseController::class, 'formData']);
         Route::get('purchases', [PurchaseController::class, 'index']);
         Route::post('purchases', [PurchaseController::class, 'store']);
+        Route::get('purchases/{purchase}/invoice.pdf', [InvoicePdfController::class, 'purchase']);
         Route::get('purchases/{purchase}', [PurchaseController::class, 'show']);
         Route::put('purchases/{purchase}', [PurchaseController::class, 'update']);
         Route::post('purchases/{purchase}/confirm', [PurchaseController::class, 'confirm']);

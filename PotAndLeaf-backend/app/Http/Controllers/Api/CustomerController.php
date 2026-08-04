@@ -60,6 +60,47 @@ class CustomerController extends Controller
         return $this->message('Customer deleted.');
     }
 
+    public function purchaseHistory(Request $request, Customer $customer): JsonResponse
+    {
+        $this->allow($request, 'customers.view');
+        $this->sameCompany($request, $customer);
+
+        $perPage = min(50, max(1, (int) $request->input('per_page', 15)));
+        $paginated = \App\Models\Sale::forCompany($customer->company_id)
+            ->where('customer_id', $customer->id)
+            ->with(['customer:id,name,type'])
+            ->withCount('items')
+            ->orderByDesc('sale_date')
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+
+        $ledger = \App\Models\LoyaltyLedgerEntry::forCompany($customer->company_id)
+            ->where('customer_id', $customer->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($e) => [
+                'id' => $e->id,
+                'type' => $e->type,
+                'points' => (int) $e->points,
+                'balance_after' => (int) $e->balance_after,
+                'note' => $e->note,
+                'reference_type' => $e->reference_type,
+                'reference_id' => $e->reference_id,
+                'created_at' => $e->created_at?->toIso8601String(),
+            ]);
+
+        $payload = \App\Http\Resources\SaleResource::collection($paginated);
+        $response = $this->ok($payload);
+        $body = $response->getData(true);
+        $body['loyalty'] = [
+            'balance' => (int) $customer->loyalty_points,
+            'ledger'  => $ledger,
+        ];
+
+        return response()->json($body);
+    }
+
     private function company(Request $request)
     {
         return $request->attributes->get('company');

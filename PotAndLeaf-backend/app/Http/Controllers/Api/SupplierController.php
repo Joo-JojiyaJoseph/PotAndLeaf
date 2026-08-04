@@ -66,6 +66,22 @@ class SupplierController extends Controller
         return $this->message('Supplier moved to trash.');
     }
 
+    public function purchaseHistory(Request $request, Supplier $supplier): JsonResponse
+    {
+        $this->allow($request, 'suppliers.view');
+        $this->sameCompany($request, $supplier);
+
+        $perPage = min(50, max(1, (int) $request->input('per_page', 15)));
+        $paginated = \App\Models\Purchase::forCompany($supplier->company_id)
+            ->where('supplier_id', $supplier->id)
+            ->withCount('items')
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+
+        return $this->ok(\App\Http\Resources\PurchaseResource::collection($paginated));
+    }
+
     private function allow(Request $request, string $permission): void
     {
         $company = $request->attributes->get('company');

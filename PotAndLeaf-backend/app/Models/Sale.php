@@ -17,20 +17,23 @@ class Sale extends Model
     protected $fillable = [
         'company_id', 'customer_id', 'location_id', 'customer_name', 'sale_no', 'sale_date',
         'is_interstate', 'payment_mode', 'subtotal', 'tax_total', 'round_off',
-        'grand_total', 'amount_paid', 'status', 'notes', 'confirmed_at',
+        'grand_total', 'amount_paid', 'loyalty_points_redeemed', 'loyalty_discount',
+        'status', 'notes', 'confirmed_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'sale_date'     => 'date',
-            'is_interstate' => 'boolean',
-            'subtotal'      => 'decimal:2',
-            'tax_total'     => 'decimal:2',
-            'round_off'     => 'decimal:2',
-            'grand_total'   => 'decimal:2',
-            'amount_paid'   => 'decimal:2',
-            'confirmed_at'  => 'datetime',
+            'sale_date'               => 'date',
+            'is_interstate'           => 'boolean',
+            'subtotal'                => 'decimal:2',
+            'tax_total'               => 'decimal:2',
+            'round_off'               => 'decimal:2',
+            'grand_total'             => 'decimal:2',
+            'amount_paid'             => 'decimal:2',
+            'loyalty_points_redeemed' => 'integer',
+            'loyalty_discount'        => 'decimal:2',
+            'confirmed_at'            => 'datetime',
         ];
     }
 
@@ -67,5 +70,22 @@ class Sale extends Model
     public function isConfirmed(): bool
     {
         return $this->status === 'confirmed';
+    }
+
+    public function paymentStatus(): string
+    {
+        if ($this->status !== 'confirmed') {
+            return 'n/a';
+        }
+        $due = max(0, (float) $this->grand_total - (float) $this->loyalty_discount);
+        $paid = (float) $this->amount_paid;
+        if ($paid <= 0) {
+            return 'unpaid';
+        }
+        if ($paid + 0.01 < $due) {
+            return 'partial';
+        }
+
+        return 'paid';
     }
 }

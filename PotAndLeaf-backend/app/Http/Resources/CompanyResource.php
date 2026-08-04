@@ -12,18 +12,23 @@ class CompanyResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'         => $this->id,
-            'name'       => $this->name,
-            'code'       => $this->code,
-            'legal_name' => $this->legal_name,
-            'gst_number' => $this->gst_number,
-            'state'      => $this->state,
-            'state_code' => $this->state_code,
-            'address'    => $this->address,
-            'phone'      => $this->phone,
-            'email'      => $this->email,
-            'is_active'  => (bool) $this->is_active,
+            'id'          => $this->id,
+            'name'        => $this->name,
+            'code'        => $this->code,
+            'legal_name'  => $this->legal_name,
+            'gst_number'  => $this->gst_number,
+            'state'       => $this->state,
+            'state_code'  => $this->state_code,
+            'address'     => $this->address,
+            'phone'       => $this->phone,
+            'email'       => $this->email,
+            'username'    => $this->username,
+            'logo'        => $this->logo,
+            'photo'       => $this->logo,
+            'description' => $this->description,
+            'is_active'   => (bool) $this->is_active,
             'users_count' => $this->when($this->users_count !== null, $this->users_count),
+            'has_password'=> filled($this->resource->getRawOriginal('password')),
         ];
     }
 }

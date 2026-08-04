@@ -34,8 +34,13 @@ class SaleController extends Controller
         $this->allow($request, 'sales.create');
 
         $customers = Customer::forCompany($company->id)->where('status', 'active')->orderBy('name')
-            ->get(['id', 'name', 'type'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type?->value]);
+            ->get(['id', 'name', 'type', 'loyalty_points'])
+            ->map(fn ($c) => [
+                'id' => $c->id, 'name' => $c->name, 'type' => $c->type?->value,
+                'loyalty_points' => (int) $c->loyalty_points,
+            ]);
+
+        $settings = app(\App\Services\SettingsService::class)->all($company->id);
 
         $products = Product::forCompany($company->id)->orderBy('name')
             ->get(['id', 'sku', 'name', 'hsn_code', 'gst_rate', 'current_stock', 'retail_price', 'wholesale_price', 'dealer_price', 'mrp'])
@@ -50,7 +55,17 @@ class SaleController extends Controller
             ->get(['id', 'name', 'is_default'])
             ->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'is_default' => (bool) $l->is_default]);
 
-        return $this->ok(['customers' => $customers, 'products' => $products, 'locations' => $locations]);
+        return $this->ok([
+            'customers' => $customers,
+            'products'  => $products,
+            'locations' => $locations,
+            'settings'  => [
+                'loyalty_earn_rupees'        => (float) $settings['loyalty_earn_rupees'],
+                'loyalty_earn_points'        => (int) $settings['loyalty_earn_points'],
+                'loyalty_redeem_rupees'      => (float) $settings['loyalty_redeem_rupees'],
+                'loyalty_redeem_cap_percent' => (float) $settings['loyalty_redeem_cap_percent'],
+            ],
+        ]);
     }
 
     public function store(StoreSaleRequest $request): JsonResponse

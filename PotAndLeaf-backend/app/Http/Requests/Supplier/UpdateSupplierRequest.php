@@ -14,6 +14,13 @@ class UpdateSupplierRequest extends FormRequest
         return $this->user()->can('update', $this->route('supplier'));
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('bank_ifsc') && blank($this->input('bank_ifsc'))) {
+            $this->merge(['bank_ifsc' => null]);
+        }
+    }
+
     /** @return array<string, mixed> */
     public function rules(): array
     {
@@ -39,14 +46,17 @@ class UpdateSupplierRequest extends FormRequest
             'state'           => ['nullable', 'string', 'max:100'],
             'country'         => ['nullable', 'string', 'max:100'],
             'pincode'         => ['nullable', 'string', 'max:12'],
-            'bank_name'       => ['nullable', 'string', 'max:191'],
-            'bank_account_no' => ['nullable', 'string', 'max:34'],
-            'bank_ifsc'       => ['nullable', 'string', 'max:15'],
-            'credit_days'     => ['nullable', 'integer', 'min:0', 'max:3650'],
-            'credit_limit'    => ['nullable', 'numeric', 'min:0'],
-            'opening_balance' => ['nullable', 'numeric'],
-            'notes'           => ['nullable', 'string', 'max:2000'],
-            'status'          => ['required', new Enum(SupplierStatus::class)],
+            'bank_name'         => ['nullable', 'string', 'max:191'],
+            'bank_account_name' => ['nullable', 'string', 'max:191'],
+            'bank_account_no'   => ['nullable', 'string', 'max:34'],
+            'bank_ifsc'         => ['nullable', 'string', 'max:15', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'],
+            'address'           => ['required', 'string', 'max:2000'],
+            'photo'             => ['nullable', 'string', 'max:500'],
+            'credit_days'       => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'credit_limit'      => ['nullable', 'numeric', 'min:0'],
+            'opening_balance'   => ['nullable', 'numeric'],
+            'notes'             => ['nullable', 'string', 'max:2000'],
+            'status'            => ['required', new Enum(SupplierStatus::class)],
         ];
     }
 }

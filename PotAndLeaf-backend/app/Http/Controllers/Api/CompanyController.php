@@ -8,8 +8,10 @@ use App\Http\Requests\Company\UpdateCompanyRequest;
 use App\Http\Resources\CompanyResource;
 use App\Models\Company;
 use App\Support\Api\ApiResponse;
+use App\Support\Media\MediaStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Company management — the super-admin (HO) surface. Not company-scoped: these
@@ -30,7 +32,9 @@ class CompanyController extends Controller
 
     public function store(StoreCompanyRequest $request): JsonResponse
     {
-        $company = Company::create($request->validated());
+        $data = $request->validated();
+        unset($data['password_confirmation'], $data['photo']);
+        $company = Company::create($data);
 
         return $this->created(new CompanyResource($company), 'Company created.');
     }
@@ -44,9 +48,20 @@ class CompanyController extends Controller
 
     public function update(UpdateCompanyRequest $request, Company $company): JsonResponse
     {
-        $company->update($request->validated());
+        $data = $request->validated();
+        unset($data['password_confirmation'], $data['photo']);
 
-        return $this->ok(new CompanyResource($company), 'Company updated.');
+        if (array_key_exists('logo', $data)) {
+            $data['logo'] = MediaStorage::replace($company->logo, $data['logo']);
+        }
+
+        if (empty($data['password'])) {
+            unset($data['password']);
+        }
+
+        $company->update($data);
+
+        return $this->ok(new CompanyResource($company->fresh()), 'Company updated.');
     }
 
     public function destroy(Request $request, Company $company): JsonResponse
@@ -55,6 +70,30 @@ class CompanyController extends Controller
         $company->delete();
 
         return $this->message('Company deleted.');
+    }
+
+    public function resetPassword(Request $request, Company $company): JsonResponse
+    {
+        $this->ensureSuperAdmin($request);
+
+        $data = $request->validate([
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'generate' => ['sometimes', 'boolean'],
+        ]);
+
+        $plain = null;
+        if (! empty($data['generate'])) {
+            $plain = Str::password(12);
+            $company->update(['password' => $plain]);
+        } else {
+            abort_unless(! empty($data['password']), 422, 'Provide a password or set generate=true.');
+            $company->update(['password' => $data['password']]);
+        }
+
+        return $this->ok([
+            'id' => $company->id,
+            'temporary_password' => $plain,
+        ], $plain ? 'Temporary password generated.' : 'Password updated.');
     }
 
     private function ensureSuperAdmin(Request $request): void

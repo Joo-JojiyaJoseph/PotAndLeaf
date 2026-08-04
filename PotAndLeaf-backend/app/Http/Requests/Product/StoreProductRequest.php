@@ -51,6 +51,8 @@ class StoreProductRequest extends FormRequest
             'images'          => ['nullable', 'array'],
             'images.*'        => ['string'],
             'status'          => ['required', new Enum(ProductStatus::class)],
+            'is_rental'       => ['sometimes', 'boolean'],
+            'rental_daily_rate' => ['nullable', 'numeric', 'min:0'],
 
             'suppliers'                 => ['nullable', 'array'],
             'suppliers.*.supplier_id'   => ['required', 'uuid', Rule::exists('suppliers', 'id')->where('company_id', $companyId)],
