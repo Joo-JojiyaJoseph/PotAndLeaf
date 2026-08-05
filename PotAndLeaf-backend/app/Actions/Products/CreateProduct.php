@@ -4,14 +4,12 @@ namespace App\Actions\Products;
 
 use App\Models\Product;
 use App\Repositories\Contracts\ProductRepositoryInterface;
-use App\Support\Barcode\BarcodeGenerator;
 use Illuminate\Support\Facades\DB;
 
 class CreateProduct
 {
     public function __construct(
         private readonly ProductRepositoryInterface $products,
-        private readonly BarcodeGenerator $barcodes,
     ) {}
 
     /** @param array<string,mixed> $data */
@@ -21,9 +19,8 @@ class CreateProduct
             $suppliers = $this->pullSuppliers($data);
             $data = $this->normalizeDecimals($data);
 
-            if (empty($data['barcode'])) {
-                $data['barcode'] = $this->barcodes->forProduct($companyId);
-            }
+            // Barcodes are assigned per batch when stock is purchased, not at
+            // product creation. Any barcode typed on the form is still honoured.
 
             $product = $this->products->create([
                 ...$data,

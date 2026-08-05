@@ -28,6 +28,7 @@ class InventoryService
         ?string $referenceId = null,
         ?string $note = null,
         ?int $userId = null,
+        ?string $productBatchId = null,
     ): StockLedgerEntry {
         $delta = $direction === 'in' ? $qty : -$qty;
         $newBalance = (float) $product->current_stock + $delta;
@@ -36,6 +37,7 @@ class InventoryService
         return StockLedgerEntry::create([
             'company_id'        => $product->company_id,
             'product_id'     => $product->id,
+            'product_batch_id' => $productBatchId,
             'direction'      => $direction,
             'qty'            => $qty,
             'unit_cost'      => $unitCost,

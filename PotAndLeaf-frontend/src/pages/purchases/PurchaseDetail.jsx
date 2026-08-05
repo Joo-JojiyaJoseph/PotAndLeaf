@@ -8,6 +8,8 @@ import { formatCurrency, formatDate } from '../../lib/format';
 import { printGRN } from '../../lib/invoicePrint';
 import { downloadPdf } from '../../lib/pdfDownload';
 import { useToast } from '../../lib/toast';
+import { Barcode, printBarcodeLabel } from '../../components/Barcode';
+import { printBarcodeSheet } from '../../lib/barcodeSheet';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
@@ -21,6 +23,24 @@ export default function PurchaseDetail() {
     queryKey: ['purchase', id],
     queryFn: () => api.get(`/purchases/${id}`).then((r) => r.data.data),
   });
+
+  // Batches (with their barcodes) only exist once stock is posted on confirm.
+  const { data: batches = [] } = useQuery({
+    queryKey: ['purchase-batches', id],
+    queryFn: () => api.get(`/purchases/${id}/batches`).then((r) => r.data.data),
+    enabled: !!data && data.status === 'confirmed',
+  });
+
+  function printAllLabels() {
+    const labels = [];
+    batches.forEach((b) => {
+      const copies = Math.min(Math.max(Math.round(Number(b.qty) || 1), 1), 200);
+      for (let i = 0; i < copies; i++) {
+        labels.push({ name: b.product?.name, sku: b.product?.sku, barcode: b.barcode, price: b.product?.price || b.product?.mrp });
+      }
+    });
+    if (labels.length) printBarcodeSheet(labels);
+  }
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['purchase', id] });
@@ -109,6 +129,41 @@ export default function PurchaseDetail() {
           </table>
         </div>
       </Section>
+
+      {p.status === 'confirmed' && batches.length > 0 && (
+        <Section
+          title="Batch barcodes"
+          actions={
+            <Button variant="outline" size="sm" onClick={printAllLabels}>
+              <PrinterIcon className="size-4" /> Print all labels
+            </Button>
+          }
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {batches.map((b) => (
+              <Card key={b.id} className="flex flex-col gap-3 p-4">
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-ink">{b.product?.name}</div>
+                  <div className="microlabel text-faint">
+                    Batch {b.batch_no} · Qty {b.qty}
+                  </div>
+                </div>
+                <div className="flex items-center justify-center rounded-xl bg-white p-3">
+                  <Barcode value={b.barcode} height={48} />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="self-center"
+                  onClick={() => printBarcodeLabel({ barcode: b.barcode, name: b.product?.name, price: b.product?.price || b.product?.mrp })}
+                >
+                  <PrinterIcon className="size-4" /> Print label
+                </Button>
+              </Card>
+            ))}
+          </div>
+        </Section>
+      )}
 
       <div className="flex justify-end">
         <Card className="w-full max-w-xs p-5">

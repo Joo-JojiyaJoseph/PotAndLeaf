@@ -89,7 +89,8 @@ export default function ProductForm() {
 
     setErrors({});
     setSaving(true);
-    // Send numbers as numbers; drop empty barcode so the server auto-generates.
+    // Send numbers as numbers; an empty barcode stays empty (barcodes are set
+    // per batch at purchase, not auto-generated on the product).
     const payload = { ...form };
     ['gst_rate', 'cost_price', 'mrp', 'dealer_price', 'wholesale_price', 'retail_price', 'reorder_level', 'opening_stock'].forEach(
       (k) => (payload[k] = payload[k] === '' || payload[k] == null ? 0 : Number(payload[k])),
@@ -266,8 +267,14 @@ export default function ProductForm() {
         <div className="space-y-4">
           <Card className="p-5">
             <div className="microlabel mb-3 text-faint">Barcode</div>
-            {barcode ? (
-              <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-muted">
+              Barcodes are assigned to each batch when stock is received on a purchase, so the
+              same product can carry a different barcode per lot. Print batch labels from the
+              purchase once it&rsquo;s confirmed.
+            </p>
+            {barcode && (
+              <div className="mt-4 flex flex-col items-center gap-3 border-t border-line pt-4">
+                <div className="microlabel self-start text-faint">Product-level barcode</div>
                 <div className="rounded-xl bg-white p-3">
                   <Barcode value={barcode} />
                 </div>
@@ -279,14 +286,10 @@ export default function ProductForm() {
                   <PrinterIcon className="size-4" /> Print label
                 </Button>
               </div>
-            ) : (
-              <p className="text-sm text-muted">
-                A Code128 barcode is generated automatically when you save. You can also type your own above.
-              </p>
             )}
             <div className="mt-4">
-              <Field label="Barcode value (optional)">
-                <Input value={form.barcode} onChange={set('barcode')} placeholder="Auto-generated if blank" />
+              <Field label="Product-level barcode (optional)">
+                <Input value={form.barcode} onChange={set('barcode')} placeholder="Usually left blank — set per batch" />
               </Field>
             </div>
           </Card>

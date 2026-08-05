@@ -141,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('products', [ProductController::class, 'store']);
         Route::get('products/{product}', [ProductController::class, 'show']);
+        Route::get('products/{product}/batches', [ProductController::class, 'batches']);
         Route::put('products/{product}', [ProductController::class, 'update']);
         Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
@@ -152,6 +153,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('purchases/{purchase}', [PurchaseController::class, 'show']);
         Route::put('purchases/{purchase}', [PurchaseController::class, 'update']);
         Route::post('purchases/{purchase}/confirm', [PurchaseController::class, 'confirm']);
+        Route::get('purchases/{purchase}/batches', [PurchaseController::class, 'batches']);
         Route::delete('purchases/{purchase}', [PurchaseController::class, 'destroy']);
 
         // Milestone 2 — Inventory

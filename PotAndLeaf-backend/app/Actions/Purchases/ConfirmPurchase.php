@@ -3,11 +3,13 @@
 namespace App\Actions\Purchases;
 
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Services\ActivityLogService;
 use App\Services\InventoryService;
 use App\Services\SellAsFulfillmentService;
+use App\Support\Barcode\BarcodeGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,6 +27,7 @@ class ConfirmPurchase
         private readonly InventoryService $inventory,
         private readonly SellAsFulfillmentService $sellAs,
         private readonly ActivityLogService $activity,
+        private readonly BarcodeGenerator $barcodes,
     ) {}
 
     public function handle(Purchase $purchase, ?int $userId = null): Purchase
@@ -37,6 +40,8 @@ class ConfirmPurchase
 
         return DB::transaction(function () use ($purchase, $userId) {
             $purchase->loadMissing('items');
+
+            $lineNo = 0;
 
             foreach ($purchase->items as $item) {
                 if (! $item->product_id) {
@@ -55,10 +60,17 @@ class ConfirmPurchase
                     // Delegates entirely — the set/unit product(s) it stocks may
                     // differ from the purchased line's own product, so the normal
                     // location adjustment below (keyed on $product) doesn't apply.
+                    // Bulk lines carry unit-level barcodes from the split, so we
+                    // don't also mint a batch barcode here.
                     $this->sellAs->fulfil($purchase, $item, $product, $userId);
                     $item->save();
                     continue;
                 }
+
+                // Each stocked line becomes a batch with its own barcode — this
+                // is the point stock is labelled batch-wise.
+                $lineNo++;
+                $batch = $this->makeBatch($purchase, $item, $product, $lineNo);
 
                 $this->inventory->post(
                     product: $product,
@@ -69,6 +81,7 @@ class ConfirmPurchase
                     referenceId: $purchase->id,
                     note: "Purchase {$purchase->purchase_no}",
                     userId: $userId,
+                    productBatchId: $batch->id,
                 );
 
                 $product->cost_price = $item->landed_unit_cost;
@@ -93,5 +106,27 @@ class ConfirmPurchase
 
             return $purchase->refresh()->load(['supplier', 'items', 'createdBy:id,name']);
         });
+    }
+
+    /** Mint a barcoded batch for one stocked purchase line. */
+    private function makeBatch(Purchase $purchase, $item, Product $product, int $lineNo): ProductBatch
+    {
+        $qty = (float) $item->qty;
+
+        return ProductBatch::create([
+            'company_id'       => $purchase->company_id,
+            'product_id'       => $product->id,
+            'purchase_id'      => $purchase->id,
+            'purchase_item_id' => $item->id,
+            'supplier_id'      => $purchase->supplier_id,
+            'location_id'      => $purchase->location_id,
+            'batch_no'         => sprintf('%s-%02d', $purchase->purchase_no, $lineNo),
+            'barcode'          => $this->barcodes->forBatch($purchase->company_id, $purchase->purchase_no, $lineNo),
+            'qty'              => $qty,
+            'remaining_qty'    => $qty,
+            'cost_price'       => (float) $item->landed_unit_cost,
+            'status'           => 'active',
+            'received_at'      => now(),
+        ]);
     }
 }

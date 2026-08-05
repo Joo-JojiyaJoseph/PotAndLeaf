@@ -11,7 +11,7 @@ class StockLedgerEntry extends Model
     use HasUuids;
 
     protected $fillable = [
-        'company_id', 'product_id', 'direction', 'qty', 'unit_cost',
+        'company_id', 'product_id', 'product_batch_id', 'direction', 'qty', 'unit_cost',
         'balance_after', 'reference_type', 'reference_id', 'note',
         'occurred_at', 'created_by',
     ];

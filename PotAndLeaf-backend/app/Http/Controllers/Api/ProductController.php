@@ -93,6 +93,22 @@ class ProductController extends Controller
         return $this->message('Product deleted.');
     }
 
+    /** Batches (received lots + their barcodes) for this product. */
+    public function batches(Request $request, Product $product): JsonResponse
+    {
+        $this->allow($request, 'products.view');
+        $this->sameCompany($request, $product);
+
+        $batches = \App\Models\ProductBatch::forCompany($product->company_id)
+            ->where('product_id', $product->id)
+            ->with(['supplier:id,name', 'purchase:id,purchase_no'])
+            ->orderByDesc('received_at')
+            ->get()
+            ->each(fn ($b) => $b->setRelation('product', $product));
+
+        return $this->ok(\App\Http\Resources\ProductBatchResource::collection($batches));
+    }
+
     private function company(Request $request)
     {
         return $request->attributes->get('company');

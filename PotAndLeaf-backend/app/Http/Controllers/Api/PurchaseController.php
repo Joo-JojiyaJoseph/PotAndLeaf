@@ -107,6 +107,21 @@ class PurchaseController extends Controller
         return $this->message('Purchase cancelled.');
     }
 
+    /** Batches (and their barcodes) created when this purchase was confirmed. */
+    public function batches(Request $request, Purchase $purchase): JsonResponse
+    {
+        $this->allow($request, 'purchases.view');
+        $this->sameCompany($request, $purchase);
+
+        $batches = \App\Models\ProductBatch::forCompany($purchase->company_id)
+            ->where('purchase_id', $purchase->id)
+            ->with(['product:id,sku,name,mrp,retail_price', 'supplier:id,name', 'purchase:id,purchase_no'])
+            ->orderBy('batch_no')
+            ->get();
+
+        return $this->ok(\App\Http\Resources\ProductBatchResource::collection($batches));
+    }
+
     private function company(Request $request)
     {
         return $request->attributes->get('company');
