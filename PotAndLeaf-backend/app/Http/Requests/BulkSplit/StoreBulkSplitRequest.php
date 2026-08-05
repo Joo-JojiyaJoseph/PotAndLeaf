@@ -25,6 +25,9 @@ class StoreBulkSplitRequest extends FormRequest
             'items.*.product_id'    => ['required', 'uuid', Rule::exists('products', 'id')->where('company_id', $companyId)],
             'items.*.qty'           => ['required', 'numeric', 'gt:0'],
             'items.*.weight'        => ['nullable', 'numeric', 'min:0'],
+            'items.*.retail_price'  => ['nullable', 'numeric', 'min:0'],
+            'markup_percent'        => ['nullable', 'numeric', 'min:0', 'max:500'],
+            'source_purchase_id'    => ['nullable', 'uuid', Rule::exists('purchases', 'id')->where('company_id', $companyId)],
         ];
     }
 }

@@ -62,7 +62,7 @@ class SupplierPaymentController extends Controller
     {
         $this->allow($request, 'payments.delete');
         abort_unless((string) $supplierPayment->company_id === (string) $this->company($request)->id, 404);
-        $this->payments->delete($supplierPayment);
+        $this->payments->delete($supplierPayment, $request->user()->id);
 
         return $this->message('Payment voided.');
     }

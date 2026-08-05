@@ -31,7 +31,7 @@ export default function TransfersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Stock transfers</h1>
-          <p className="text-sm text-muted">Move stock between godowns and shops. Dispatch puts it in transit; receive lands it.</p>
+          <p className="text-sm text-muted">Move stock between companies. Dispatch from source; receive at destination (matched by SKU).</p>
         </div>
         {can('transfers.create') && <Link to="/transfers/new"><Button size="sm"><PlusIcon className="size-4" /> New transfer</Button></Link>}
       </div>
@@ -48,7 +48,7 @@ export default function TransfersList() {
       <Card className="overflow-hidden">
         {isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
           : isError ? <div className="px-4 py-12 text-center text-sm text-muted">Couldn't load transfers.</div>
-          : rows.length === 0 ? <div className="px-4 py-16 text-center"><p className="text-sm font-medium">No transfers here</p><p className="mt-1 text-sm text-muted">Create one to move stock between locations.</p></div>
+          : rows.length === 0 ? <div className="px-4 py-16 text-center"><p className="text-sm font-medium">No transfers here</p><p className="mt-1 text-sm text-muted">Create one to move stock to another company.</p></div>
           : (
             <table className="w-full text-sm">
               <thead><tr className="border-b border-line text-left text-faint">
@@ -64,8 +64,8 @@ export default function TransfersList() {
                   <tr key={t.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
                     <td className="tnum px-4 py-2.5 text-xs"><button onClick={() => navigate(`/transfers/${t.id}`)} className="font-medium text-ink hover:text-leaf">{t.transfer_no}</button></td>
                     <td className="px-4 py-2.5 text-muted">{formatDate(t.transfer_date)}</td>
-                    <td className="px-4 py-2.5">{t.from_location}</td>
-                    <td className="px-4 py-2.5">{t.to_location}</td>
+                    <td className="px-4 py-2.5">{t.from_company ?? t.from_location}</td>
+                    <td className="px-4 py-2.5">{t.to_company ?? t.to_location}</td>
                     <td className="tnum px-4 py-2.5 text-right text-muted">{t.items_count ?? '—'}</td>
                     <td className="px-4 py-2.5"><Badge tone={tone[t.status] ?? 'default'}>{t.status.replace('_', ' ')}</Badge></td>
                   </tr>

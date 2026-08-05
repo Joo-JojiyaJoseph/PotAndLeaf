@@ -15,11 +15,9 @@ class StoreTransferRequest extends FormRequest
     public function rules(): array
     {
         $companyId = $this->route('current_company')->id;
-        $loc = fn () => Rule::exists('locations', 'id')->where('company_id', $companyId);
 
         return [
-            'from_location_id' => ['required', 'uuid', $loc()],
-            'to_location_id'   => ['required', 'uuid', 'different:from_location_id', $loc()],
+            'to_company_id'      => ['required', 'integer', Rule::exists('companies', 'id')->where('is_active', true), Rule::notIn([(int) $companyId])],
             'transfer_date'    => ['required', 'date'],
             'notes'            => ['nullable', 'string', 'max:1000'],
             'items'              => ['required', 'array', 'min:1'],

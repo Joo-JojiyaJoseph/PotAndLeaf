@@ -81,7 +81,7 @@ class SaleController extends Controller
         $this->allow($request, 'sales.view');
         $this->sameCompany($request, $sale);
 
-        return $this->ok(new SaleResource($sale->load(['items', 'customer:id,name,type', 'company:id,name,legal_name,gst_number,address,phone,email,state,state_code'])));
+        return $this->ok(new SaleResource($sale->load(['items', 'customer:id,name,type', 'createdBy:id,name', 'company:id,name,legal_name,gst_number,address,phone,email,state,state_code'])));
     }
 
     public function confirm(Request $request, Sale $sale): JsonResponse

@@ -45,7 +45,7 @@ export default function TransferDetail() {
     <div className="space-y-5 p-4 sm:p-6">
       <DetailHeader
         title={`Transfer ${t.transfer_no}`}
-        subtitle={`${t.from_location} → ${t.to_location} · ${formatDate(t.transfer_date)}`}
+        subtitle={`${t.from_company ?? t.from_location} → ${t.to_company ?? t.to_location} · ${formatDate(t.transfer_date)}`}
         backTo="/transfers"
         actions={<>
           <Badge tone={tone[t.status] ?? 'default'}>{t.status.replace('_', ' ')}</Badge>
@@ -57,8 +57,8 @@ export default function TransferDetail() {
 
       <Section title="Details">
         <InfoGrid cols={4}>
-          <InfoItem label="From" value={t.from_location} />
-          <InfoItem label="To" value={t.to_location} />
+          <InfoItem label="From company" value={t.from_company ?? t.from_location} />
+          <InfoItem label="To company" value={t.to_company ?? t.to_location} />
           <InfoItem label="Dispatched" value={t.dispatched_at ? formatDate(t.dispatched_at) : null} />
           <InfoItem label="Received" value={t.received_at ? formatDate(t.received_at) : null} />
           <InfoItem label="Notes" value={t.notes} />
@@ -90,7 +90,7 @@ export default function TransferDetail() {
           <Button size="sm" disabled={receiveM.isPending} onClick={() => receiveM.mutate()}>Confirm receipt</Button>
         </>}
       >
-        <p className="mb-3 text-sm text-muted">Enter the quantity actually received at {t.to_location}. Any shortfall returns to {t.from_location}.</p>
+        <p className="mb-3 text-sm text-muted">Enter the quantity actually received at {t.to_company ?? t.to_location}. Any shortfall returns to {t.from_company ?? t.from_location}.</p>
         <div className="space-y-2">
           {(t.items ?? []).map((it) => (
             <div key={it.id} className="flex items-center justify-between gap-3">

@@ -9,7 +9,7 @@ import { formatCurrency } from '../../lib/format';
 import { allocateSplit } from '../../lib/bulkSplitCalc';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const emptyLine = () => ({ product_id: '', qty: '', weight: '1' });
+const emptyLine = () => ({ product_id: '', qty: '', weight: '1', retail_price: '' });
 const numInput = 'h-9 w-full rounded-xl border border-line bg-surface px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-leaf/25';
 const selectCls = 'h-9 w-full min-w-[160px] rounded-xl border border-line bg-surface px-2 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
@@ -21,6 +21,7 @@ export default function BulkSplitForm() {
   const [splitDate, setSplitDate] = useState(today());
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState([emptyLine()]);
+  const [markup, setMarkup] = useState('40');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -39,6 +40,11 @@ export default function BulkSplitForm() {
     [totalCost, lines],
   );
 
+  const suggestedRetail = (unitCost) => {
+    const m = Number(markup) || 0;
+    return Math.round(unitCost * (1 + m / 100) * 100) / 100;
+  };
+
   const err = (k) => errors[k]?.[0];
   const setLine = (i, patch) => setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
@@ -51,9 +57,17 @@ export default function BulkSplitForm() {
         source_qty: Number(sourceQty) || 0,
         split_date: splitDate,
         notes: notes || null,
-        items: lines.filter((l) => l.product_id).map((l) => ({
-          product_id: l.product_id, qty: Number(l.qty) || 0, weight: Number(l.weight) || 1,
-        })),
+        markup_percent: Number(markup) || 40,
+        items: lines.filter((l) => l.product_id).map((l) => {
+          const idx = lines.indexOf(l);
+          const a = allocated[idx] ?? {};
+          return {
+            product_id: l.product_id,
+            qty: Number(l.qty) || 0,
+            weight: Number(l.weight) || 1,
+            retail_price: l.retail_price !== '' ? Number(l.retail_price) : suggestedRetail(a.unit_cost ?? 0),
+          };
+        }),
       });
       navigate('/bulk-splits');
     } catch (e) {
@@ -101,6 +115,11 @@ export default function BulkSplitForm() {
             )}
           </p>
         )}
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <span className="text-muted">Default markup</span>
+          <input type="number" value={markup} onChange={(e) => setMarkup(e.target.value)} className="tnum h-8 w-16 rounded-lg border border-line bg-surface px-2 text-right text-sm" />
+          <span className="text-muted">% — used to suggest retail rates below (editable per line)</span>
+        </div>
       </Card>
 
       <Card className="overflow-hidden">
@@ -113,6 +132,8 @@ export default function BulkSplitForm() {
                 <th className="microlabel px-3 py-2 text-right font-semibold">Weight</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Cost share</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Unit cost</th>
+                <th className="microlabel px-3 py-2 text-right font-semibold">Suggested</th>
+                <th className="microlabel px-3 py-2 text-right font-semibold">Retail rate</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -131,6 +152,16 @@ export default function BulkSplitForm() {
                     <td className="px-3 py-2"><input type="number" step="0.001" className={numInput} value={line.weight} onChange={(e) => setLine(i, { weight: e.target.value })} /></td>
                     <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(a.cost_alloc ?? 0)}</td>
                     <td className="tnum px-3 py-2 text-right font-medium">{formatCurrency(a.unit_cost ?? 0)}</td>
+                    <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(suggestedRetail(a.unit_cost ?? 0))}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        className={numInput}
+                        value={line.retail_price !== '' ? line.retail_price : suggestedRetail(a.unit_cost ?? 0)}
+                        onChange={(e) => setLine(i, { retail_price: e.target.value })}
+                      />
+                    </td>
                     <td className="px-3 py-2">
                       <button onClick={() => setLines((p) => (p.length === 1 ? p : p.filter((_, idx) => idx !== i)))} className="rounded-md p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Remove">
                         <TrashIcon className="size-4" />

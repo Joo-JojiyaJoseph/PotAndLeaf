@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Customer;
-use App\Models\Location;
 use App\Models\Product;
 use App\Models\Rental;
 use App\Models\RentalInvoice;
@@ -14,10 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class RentalService
 {
-    public function __construct(
-        private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
-    ) {}
+    public function __construct(private readonly InventoryService $inventory) {}
 
     public function list(int|string $companyId, array $filters): LengthAwarePaginator
     {
@@ -79,7 +75,6 @@ class RentalService
 
         return DB::transaction(function () use ($rental, $userId) {
             $rental->loadMissing('items');
-            $location = $this->resolveLocation($rental);
 
             foreach ($rental->items as $item) {
                 if (! $item->product_id) {
@@ -100,9 +95,6 @@ class RentalService
                     referenceId: $rental->id, note: "Rental {$rental->rental_no}", userId: $userId,
                 );
                 $product->save();
-                if ($location) {
-                    $this->locations->adjust($rental->company_id, $location->id, $product->id, 'out', (float) $item->qty);
-                }
             }
 
             $rental->update(['status' => 'active', 'activated_at' => now()]);
@@ -120,7 +112,6 @@ class RentalService
 
         return DB::transaction(function () use ($rental, $returns, $userId) {
             $rental->loadMissing('items');
-            $location = $this->resolveLocation($rental);
 
             foreach ($rental->items as $item) {
                 if (! $item->product_id) {
@@ -140,9 +131,6 @@ class RentalService
                         referenceId: $rental->id, note: "Return {$rental->rental_no}", userId: $userId,
                     );
                     $product->save();
-                    if ($location) {
-                        $this->locations->adjust($rental->company_id, $location->id, $product->id, 'in', $back);
-                    }
                 }
                 $item->update(['returned_qty' => (float) $item->returned_qty + $back]);
             }
@@ -161,7 +149,6 @@ class RentalService
         return DB::transaction(function () use ($rental, $userId) {
             if ($rental->isActive()) {
                 $rental->loadMissing('items');
-                $location = $this->resolveLocation($rental);
                 foreach ($rental->items as $item) {
                     $outstanding = (float) $item->qty - (float) $item->returned_qty;
                     if ($outstanding <= 0 || ! $item->product_id) {
@@ -175,9 +162,6 @@ class RentalService
                             referenceId: $rental->id, note: "Cancel {$rental->rental_no}", userId: $userId,
                         );
                         $product->save();
-                        if ($location) {
-                            $this->locations->adjust($rental->company_id, $location->id, $product->id, 'in', $outstanding);
-                        }
                     }
                     $item->update(['returned_qty' => (float) $item->qty]);
                 }
@@ -262,13 +246,6 @@ class RentalService
             $customer->outstanding = (float) $customer->outstanding + $delta;
             $customer->save();
         }
-    }
-
-    private function resolveLocation(Rental $rental): ?Location
-    {
-        return $rental->location_id
-            ? Location::forCompany($rental->company_id)->find($rental->location_id)
-            : $this->locations->defaultLocation($rental->company_id);
     }
 
     private function nextRentalNo(int|string $companyId): string

@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Location;
+use App\Models\ActivityLog;
+use App\Models\Company;
 use App\Models\ProductionOrder;
 use App\Models\Sale;
 use App\Models\StockTransfer;
@@ -15,40 +16,7 @@ class ActivityMonitoringService
     public function snapshot(int|string $companyId): array
     {
         $today = now()->toDateString();
-
-        $branches = Location::forCompany($companyId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get()
-            ->map(function (Location $loc) use ($companyId, $today) {
-                $salesTotal = (float) Sale::forCompany($companyId)
-                    ->where('status', 'confirmed')
-                    ->where('location_id', $loc->id)
-                    ->whereDate('sale_date', $today)
-                    ->sum('grand_total');
-
-                $productionCount = ProductionOrder::forCompany($companyId)
-                    ->where('status', 'completed')
-                    ->where('location_id', $loc->id)
-                    ->whereDate('completed_at', $today)
-                    ->count();
-
-                $pendingTransfers = StockTransfer::forCompany($companyId)
-                    ->whereIn('status', ['draft', 'in_transit'])
-                    ->where(fn ($q) => $q->where('from_location_id', $loc->id)->orWhere('to_location_id', $loc->id))
-                    ->count();
-
-                return [
-                    'location_id'        => $loc->id,
-                    'location_name'      => $loc->name,
-                    'location_type'      => $loc->type,
-                    'today_sales'        => round($salesTotal, 2),
-                    'today_production'   => $productionCount,
-                    'pending_transfers'  => $pendingTransfers,
-                ];
-            })
-            ->values()
-            ->all();
+        $company = Company::find($companyId);
 
         $pendingApprovals = [
             'stock_verifications' => StockVerification::forCompany($companyId)->where('status', 'submitted')->count(),
@@ -67,24 +35,39 @@ class ActivityMonitoringService
                 }
 
                 return [
-                    'user_id'    => $user->id,
-                    'user_name'  => $user->name,
-                    'logged_at'  => optional($t->created_at)->toDateTimeString(),
+                    'user_id'   => $user->id,
+                    'user_name' => $user->name,
+                    'logged_at' => optional($t->created_at)->toDateTimeString(),
                 ];
             })
             ->filter()
             ->values()
             ->all();
 
+        $recentLogs = ActivityLog::forCompany($companyId)
+            ->with('user:id,name')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($e) => [
+                'id'          => $e->id,
+                'action'      => $e->action,
+                'module'      => $e->module,
+                'description' => $e->description,
+                'user_name'   => $e->user?->name,
+                'created_at'  => $e->created_at?->toIso8601String(),
+            ]);
+
         return [
             'as_of'             => now()->toDateTimeString(),
-            'branches'          => $branches,
+            'company'           => $company ? ['id' => $company->id, 'name' => $company->name, 'code' => $company->code] : null,
             'pending_approvals' => $pendingApprovals,
             'recent_logins'     => $recentLogins,
+            'recent_logs'       => $recentLogs,
             'company_totals'    => [
-                'today_sales' => round((float) Sale::forCompany($companyId)
+                'today_sales'          => round((float) Sale::forCompany($companyId)
                     ->where('status', 'confirmed')->whereDate('sale_date', $today)->sum('grand_total'), 2),
-                'today_production' => ProductionOrder::forCompany($companyId)
+                'today_production'     => ProductionOrder::forCompany($companyId)
                     ->where('status', 'completed')->whereDate('completed_at', $today)->count(),
                 'in_transit_transfers' => StockTransfer::forCompany($companyId)->where('status', 'in_transit')->count(),
             ],

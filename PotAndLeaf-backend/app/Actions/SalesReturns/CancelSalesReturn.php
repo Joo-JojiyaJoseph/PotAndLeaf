@@ -3,12 +3,10 @@
 namespace App\Actions\SalesReturns;
 
 use App\Models\Customer;
-use App\Models\Location;
 use App\Models\LoyaltyLedgerEntry;
 use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Services\InventoryService;
-use App\Services\LocationStockService;
 use App\Services\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +14,6 @@ class CancelSalesReturn
 {
     public function __construct(
         private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
         private readonly LoyaltyService $loyalty,
     ) {}
 
@@ -25,10 +22,6 @@ class CancelSalesReturn
         return DB::transaction(function () use ($return, $userId) {
             if ($return->isConfirmed()) {
                 $return->loadMissing(['items', 'sale']);
-
-                $location = $return->location_id
-                    ? Location::forCompany($return->company_id)->find($return->location_id)
-                    : $this->locations->defaultLocation($return->company_id);
 
                 foreach ($return->items as $item) {
                     if (! $item->product_id) {
@@ -50,10 +43,6 @@ class CancelSalesReturn
                         userId: $userId,
                     );
                     $product->save();
-
-                    if ($location) {
-                        $this->locations->adjust($return->company_id, $location->id, $product->id, 'out', (float) $item->qty);
-                    }
                 }
 
                 if ($return->customer_id) {

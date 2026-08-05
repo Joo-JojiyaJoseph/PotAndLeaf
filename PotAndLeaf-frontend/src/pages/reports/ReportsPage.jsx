@@ -15,6 +15,7 @@ const TABS = [
   { value: 'dashboard', label: 'Dashboard' },
   { value: 'margin', label: 'Profit & Margin' },
   { value: 'profit', label: 'Approx. Profit' },
+  { value: 'price_levels', label: 'Sales by price tier' },
 ];
 const selectCls = 'h-9 rounded-lg border border-line bg-surface px-2 text-sm';
 
@@ -59,11 +60,12 @@ export default function ReportsPage() {
   const toast = useToast();
   const [tab, setTab] = useState('dashboard');
   const [range, setRange] = useState({ from: daysAgo(29), to: iso(new Date()) });
-  const [locationId, setLocationId] = useState('');
+  const [reportCompanyId, setReportCompanyId] = useState('');
   const [groupBy, setGroupBy] = useState('product');
   const [period, setPeriod] = useState('daily');
-  const [branchId, setBranchId] = useState('');
   const [sortKey, setSortKey] = useState('margin_pct');
+
+  const companyParam = reportCompanyId || undefined;
 
   const canHo = isSuperAdmin || can('reports.margin') || can('reports.profit') || can('products.view_cost') || can('*');
 
@@ -74,25 +76,32 @@ export default function ReportsPage() {
   });
 
   const dashQ = useQuery({
-    queryKey: ['reports-dashboard', activeCompany?.id, range.from, range.to, locationId],
-    queryFn: () => api.get('/reports/dashboard', { params: { ...range, location_id: locationId || undefined } }).then((r) => r.data.data),
+    queryKey: ['reports-dashboard', activeCompany?.id, reportCompanyId, range.from, range.to],
+    queryFn: () => api.get('/reports/dashboard', { params: { ...range, company_id: companyParam } }).then((r) => r.data.data),
     enabled: Boolean(activeCompany) && tab === 'dashboard',
     keepPreviousData: true,
   });
 
   const marginQ = useQuery({
-    queryKey: ['reports-margin', activeCompany?.id, range.from, range.to, groupBy],
-    queryFn: () => api.get('/reports/margin', { params: { ...range, group_by: groupBy } }).then((r) => r.data.data),
+    queryKey: ['reports-margin', activeCompany?.id, reportCompanyId, range.from, range.to],
+    queryFn: () => api.get('/reports/margin', { params: { ...range, company_id: companyParam } }).then((r) => r.data.data),
     enabled: Boolean(activeCompany) && tab === 'margin' && canHo,
     keepPreviousData: true,
   });
 
   const profitQ = useQuery({
-    queryKey: ['reports-profit', activeCompany?.id, range.from, range.to, period, branchId],
+    queryKey: ['reports-profit', activeCompany?.id, reportCompanyId, range.from, range.to, period],
     queryFn: () => api.get('/reports/profit', {
-      params: { ...range, period, branch_id: branchId || undefined },
+      params: { ...range, period, company_id: companyParam },
     }).then((r) => r.data.data),
     enabled: Boolean(activeCompany) && tab === 'profit' && canHo,
+    keepPreviousData: true,
+  });
+
+  const priceLevelQ = useQuery({
+    queryKey: ['reports-price-levels', activeCompany?.id, reportCompanyId, range.from, range.to],
+    queryFn: () => api.get('/reports/price-levels', { params: { ...range, company_id: companyParam } }).then((r) => r.data.data),
+    enabled: Boolean(activeCompany) && tab === 'price_levels',
     keepPreviousData: true,
   });
 
@@ -112,16 +121,23 @@ export default function ReportsPage() {
     }
   }
 
-  const locations = formData?.locations ?? [];
+  const companies = formData?.companies ?? [];
+  const reportCompany = companies.find((c) => String(c.id) === String(reportCompanyId)) ?? activeCompany;
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Reports</h1>
-          <p className="text-sm text-muted">Business summary for {activeCompany?.name}.</p>
+          <p className="text-sm text-muted">Business summary{reportCompany ? ` for ${reportCompany.name}` : ''}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isSuperAdmin && companies.length > 1 && (
+            <select value={reportCompanyId} onChange={(e) => setReportCompanyId(e.target.value)} className={selectCls}>
+              <option value="">Current company ({activeCompany?.name})</option>
+              {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
           <div className="flex overflow-hidden rounded-lg border border-line">
             {PRESETS.map((p) => {
               const on = range.from === daysAgo(p.days) && range.to === iso(new Date());
@@ -144,7 +160,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="flex gap-1 border-b border-line">
-        {TABS.filter((t) => t.value === 'dashboard' || canHo).map((t) => (
+        {TABS.filter((t) => t.value === 'dashboard' || t.value === 'price_levels' || canHo).map((t) => (
           <button
             key={t.value}
             type="button"
@@ -159,13 +175,9 @@ export default function ReportsPage() {
       {tab === 'dashboard' && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={selectCls}>
-              <option value="">All branches</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
             <ExportButtons
-              onPdf={() => exportFile('/reports/dashboard/export', { ...range, location_id: locationId || undefined, format: 'pdf' }, `dashboard-${range.from}.pdf`, 'application/pdf')}
-              onExcel={() => exportFile('/reports/dashboard/export', { ...range, location_id: locationId || undefined, format: 'excel' }, `dashboard-${range.from}.csv`, 'text/csv')}
+              onPdf={() => exportFile('/reports/dashboard/export', { ...range, company_id: companyParam, format: 'pdf' }, `dashboard-${range.from}.pdf`, 'application/pdf')}
+              onExcel={() => exportFile('/reports/dashboard/export', { ...range, company_id: companyParam, format: 'excel' }, `dashboard-${range.from}.csv`, 'text/csv')}
             />
           </div>
           {dashQ.isLoading ? <div className="flex justify-center py-20"><Spinner className="size-6" /></div>
@@ -243,10 +255,6 @@ export default function ReportsPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
-              <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} className={selectCls}>
-                <option value="product">Product-wise</option>
-                <option value="shop">Shop-wise</option>
-              </select>
               <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} className={selectCls}>
                 <option value="margin_pct">Sort by margin %</option>
                 <option value="margin">Sort by margin ₹</option>
@@ -254,8 +262,8 @@ export default function ReportsPage() {
               </select>
             </div>
             <ExportButtons
-              onPdf={() => exportFile('/reports/margin/export', { ...range, group_by: groupBy, format: 'pdf' }, `margin-${groupBy}.pdf`, 'application/pdf')}
-              onExcel={() => exportFile('/reports/margin/export', { ...range, group_by: groupBy, format: 'excel' }, `margin-${groupBy}.csv`, 'text/csv')}
+              onPdf={() => exportFile('/reports/margin/export', { ...range, company_id: companyParam, format: 'pdf' }, 'margin.pdf', 'application/pdf')}
+              onExcel={() => exportFile('/reports/margin/export', { ...range, company_id: companyParam, format: 'excel' }, 'margin.csv', 'text/csv')}
             />
           </div>
           <Card className="overflow-hidden">
@@ -264,7 +272,7 @@ export default function ReportsPage() {
               : (
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-line text-left text-faint">
-                    <th className="microlabel px-4 py-2.5 font-semibold">{groupBy === 'shop' ? 'Shop' : 'Product'}</th>
+                    <th className="microlabel px-4 py-2.5 font-semibold">Product</th>
                     <th className="microlabel px-4 py-2.5 text-right font-semibold">Revenue</th>
                     <th className="microlabel px-4 py-2.5 text-right font-semibold">COGS</th>
                     <th className="microlabel px-4 py-2.5 text-right font-semibold">Margin</th>
@@ -297,14 +305,10 @@ export default function ReportsPage() {
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
               </select>
-              <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className={selectCls}>
-                <option value="">All branches</option>
-                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </div>
+              </div>
             <ExportButtons
-              onPdf={() => exportFile('/reports/profit/export', { ...range, period, branch_id: branchId || undefined, format: 'pdf' }, 'profit.pdf', 'application/pdf')}
-              onExcel={() => exportFile('/reports/profit/export', { ...range, period, branch_id: branchId || undefined, format: 'excel' }, 'profit.csv', 'text/csv')}
+              onPdf={() => exportFile('/reports/profit/export', { ...range, period, company_id: companyParam, format: 'pdf' }, 'profit.pdf', 'application/pdf')}
+              onExcel={() => exportFile('/reports/profit/export', { ...range, period, company_id: companyParam, format: 'excel' }, 'profit.csv', 'text/csv')}
             />
           </div>
           {profitQ.isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
@@ -318,12 +322,12 @@ export default function ReportsPage() {
                   <StatCard label="Approx. profit" value={formatCurrency(profitQ.data.aggregate.profit)} />
                 </div>
                 <Card className="overflow-hidden">
-                  <div className="border-b border-line px-4 py-2.5 text-sm font-semibold">Per-branch breakdown</div>
+                  <div className="border-b border-line px-4 py-2.5 text-sm font-semibold">Company breakdown</div>
                   {(profitQ.data.by_branch?.length ?? 0) === 0 ? <div className="px-4 py-12 text-center text-sm text-muted">No branch sales in this range.</div>
                     : (
                       <table className="w-full text-sm">
                         <thead><tr className="border-b border-line text-left text-faint">
-                          <th className="microlabel px-4 py-2.5 font-semibold">Branch</th>
+                          <th className="microlabel px-4 py-2.5 font-semibold">Company</th>
                           <th className="microlabel px-4 py-2.5 text-right font-semibold">Sales</th>
                           <th className="microlabel px-4 py-2.5 text-right font-semibold">COGS</th>
                           <th className="microlabel px-4 py-2.5 text-right font-semibold">Expenses</th>
@@ -342,6 +346,43 @@ export default function ReportsPage() {
                         </tbody>
                       </table>
                     )}
+                </Card>
+              </>
+            )}
+        </>
+      )}
+
+      {tab === 'price_levels' && (
+        <>
+          {priceLevelQ.isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
+            : !priceLevelQ.data ? <Card className="px-4 py-16 text-center text-sm text-muted">Couldn't load price tier report.</Card>
+            : (
+              <>
+                <StatCard label="Total revenue" value={formatCurrency(priceLevelQ.data.total)} />
+                <Card className="overflow-hidden">
+                  <div className="border-b border-line px-4 py-2.5 text-sm font-semibold">Revenue by price tier</div>
+                  {(priceLevelQ.data.rows?.length ?? 0) === 0 ? (
+                    <div className="px-4 py-12 text-center text-sm text-muted">No confirmed sales in this range.</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead><tr className="border-b border-line text-left text-faint">
+                        <th className="microlabel px-4 py-2.5 font-semibold">Price tier</th>
+                        <th className="microlabel px-4 py-2.5 text-right font-semibold">Sales</th>
+                        <th className="microlabel px-4 py-2.5 text-right font-semibold">Qty</th>
+                        <th className="microlabel px-4 py-2.5 text-right font-semibold">Revenue</th>
+                      </tr></thead>
+                      <tbody>
+                        {priceLevelQ.data.rows.map((r) => (
+                          <tr key={r.price_level} className="border-b border-line/60 last:border-0">
+                            <td className="px-4 py-2.5 font-medium">{r.label}</td>
+                            <td className="tnum px-4 py-2.5 text-right">{r.sale_count}</td>
+                            <td className="tnum px-4 py-2.5 text-right">{r.qty}</td>
+                            <td className="tnum px-4 py-2.5 text-right font-medium">{formatCurrency(r.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </Card>
               </>
             )}

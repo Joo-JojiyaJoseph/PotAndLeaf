@@ -49,6 +49,7 @@ function RecordPaymentModal({ open, onClose, prefill }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supplier-payments'] });
       queryClient.invalidateQueries({ queryKey: ['payables'] });
+      queryClient.invalidateQueries({ queryKey: ['purchases'] });
       handleClose();
     },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -14,7 +14,7 @@ const numInput = 'h-9 w-full rounded-[10px] border border-line bg-surface px-2 t
 export default function RentalForm() {
   const navigate = useNavigate();
   const { activeCompany } = useAuth();
-  const [header, setHeader] = useState({ customer_id: '', location_id: '', start_date: today(), expected_end_date: '', billing_cycle: 'monthly', deposit: '', notes: '' });
+  const [header, setHeader] = useState({ customer_id: '', start_date: today(), expected_end_date: '', billing_cycle: 'monthly', deposit: '', notes: '' });
   const [lines, setLines] = useState([emptyLine()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -26,15 +26,6 @@ export default function RentalForm() {
   });
   const customers = data?.customers ?? [];
   const products = data?.products ?? [];
-  const locations = data?.locations ?? [];
-
-  useEffect(() => {
-    if (locations.length && !header.location_id) {
-      const def = locations.find((l) => l.is_default) ?? locations[0];
-      setHeader((h) => ({ ...h, location_id: def.id }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations]);
 
   const err = (k) => errors[k]?.[0];
   const setLine = (i, patch) => setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -43,7 +34,7 @@ export default function RentalForm() {
     setErrors({}); setSaving(true);
     try {
       const res = await api.post('/rentals', {
-        customer_id: header.customer_id, location_id: header.location_id || null,
+        customer_id: header.customer_id,
         start_date: header.start_date, expected_end_date: header.expected_end_date || null,
         billing_cycle: header.billing_cycle, deposit: Number(header.deposit) || 0, notes: header.notes || null,
         items: lines.filter((l) => l.product_id).map((l) => ({ product_id: l.product_id, qty: Number(l.qty) || 0, rate_per_cycle: Number(l.rate_per_cycle) || 0 })),
@@ -71,12 +62,6 @@ export default function RentalForm() {
             <select value={header.customer_id} onChange={(e) => setHeader((h) => ({ ...h, customer_id: e.target.value }))} className={selectCls}>
               <option value="">Select…</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Location" error={err('location_id')}>
-            <select value={header.location_id} onChange={(e) => setHeader((h) => ({ ...h, location_id: e.target.value }))} className={selectCls}>
-              <option value="">Default</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </Field>
           <Field label="Billing cycle" error={err('billing_cycle')}>

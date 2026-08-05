@@ -12,16 +12,21 @@ class StockTransferResource extends JsonResource
     public function toArray(Request $request): array
     {
         $user = $request->user();
-        $companyId = $this->company_id;
+        $currentCompanyId = $request->attributes->get('company')?->id;
+        $isSource = (string) $this->company_id === (string) $currentCompanyId;
+        $isDest = (string) $this->to_company_id === (string) $currentCompanyId;
 
         return [
             'id'            => $this->id,
             'transfer_no'   => $this->transfer_no,
             'transfer_date' => optional($this->transfer_date)->toDateString(),
-            'from_location_id' => $this->from_location_id,
-            'to_location_id'   => $this->to_location_id,
-            'from_location' => $this->fromLocation?->name,
-            'to_location'   => $this->toLocation?->name,
+            'from_company_id' => $this->company_id,
+            'to_company_id'   => $this->to_company_id,
+            'from_company'    => $this->fromCompany?->name ?? $this->fromLocation?->name,
+            'to_company'      => $this->toCompany?->name ?? $this->toLocation?->name,
+            // legacy aliases for older clients
+            'from_location' => $this->fromCompany?->name ?? $this->fromLocation?->name,
+            'to_location'   => $this->toCompany?->name ?? $this->toLocation?->name,
             'status'        => $this->status,
             'notes'         => $this->notes,
             'dispatched_at' => optional($this->dispatched_at)->toIso8601String(),
@@ -32,9 +37,9 @@ class StockTransferResource extends JsonResource
                 'qty' => (float) $i->qty, 'received_qty' => (float) $i->received_qty,
             ])->values()),
             'can'           => [
-                'dispatch' => $this->status === 'draft' && $user?->hasPermission('transfers.dispatch', $companyId),
-                'receive'  => $this->status === 'in_transit' && $user?->hasPermission('transfers.receive', $companyId),
-                'cancel'   => in_array($this->status, ['draft', 'in_transit'], true) && $user?->hasPermission('transfers.delete', $companyId),
+                'dispatch' => $this->status === 'draft' && $isSource && $user?->hasPermission('transfers.dispatch', $this->company_id),
+                'receive'  => $this->status === 'in_transit' && $isDest && $user?->hasPermission('transfers.receive', $currentCompanyId),
+                'cancel'   => in_array($this->status, ['draft', 'in_transit'], true) && $isSource && $user?->hasPermission('transfers.delete', $this->company_id),
             ],
         ];
     }

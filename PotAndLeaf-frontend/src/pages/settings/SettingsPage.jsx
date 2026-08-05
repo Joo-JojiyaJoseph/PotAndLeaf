@@ -37,8 +37,14 @@ export default function SettingsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({});
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pl_theme') === 'dark');
   const canView = isSuperAdmin || can('settings.view') || can('*');
   const canEdit = isSuperAdmin || can('settings.update') || can('*');
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('pl_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['settings', activeCompany?.id],
@@ -80,7 +86,23 @@ export default function SettingsPage() {
       ) : isError ? (
         <Card className="px-4 py-12 text-center text-sm text-muted">Couldn't load settings.</Card>
       ) : (
-        GROUPS.map((group) => (
+        <>
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold">Appearance</h2>
+            <div className="mt-4 max-w-xs">
+              <Field label="Dark mode">
+                <select
+                  value={darkMode ? '1' : '0'}
+                  onChange={(e) => setDarkMode(e.target.value === '1')}
+                  className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25"
+                >
+                  <option value="0">Light</option>
+                  <option value="1">Dark</option>
+                </select>
+              </Field>
+            </div>
+          </Card>
+          {GROUPS.map((group) => (
           <Card key={group.title} className="p-5">
             <h2 className="text-sm font-semibold">{group.title}</h2>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -124,7 +146,8 @@ export default function SettingsPage() {
               </div>
             )}
           </Card>
-        ))
+        ))}
+        </>
       )}
     </div>
   );

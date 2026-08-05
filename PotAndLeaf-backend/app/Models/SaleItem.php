@@ -11,7 +11,7 @@ class SaleItem extends Model
     use HasUuids;
 
     protected $fillable = [
-        'sale_id', 'product_id', 'product_name', 'hsn_code', 'qty', 'rate',
+        'sale_id', 'product_id', 'product_name', 'hsn_code', 'qty', 'rate', 'price_level',
         'discount', 'gst_rate', 'taxable_value', 'cgst_amount', 'sgst_amount',
         'igst_amount', 'line_total',
     ];

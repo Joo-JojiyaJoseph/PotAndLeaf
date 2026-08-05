@@ -9,14 +9,19 @@ import { formatCurrency } from '../../lib/format';
 import { computeSale, tierPrice } from '../../lib/saleCalc';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const emptyLine = () => ({ product_id: '', qty: '1', rate: '', discount: '', gst_rate: '' });
+const emptyLine = () => ({ product_id: '', qty: '1', rate: '', discount: '', gst_rate: '', price_level: 'retail' });
+const PRICE_LEVELS = [
+  { value: 'retail', label: 'Retail' },
+  { value: 'wholesale', label: 'Wholesale' },
+  { value: 'dealer', label: 'Dealer' },
+];
 const numInput = 'h-9 w-full rounded-[10px] border border-line bg-surface px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-leaf/30';
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
 export default function SaleForm() {
   const navigate = useNavigate();
   const { isSuperAdmin, companies, companyId, selectCompany, activeCompany } = useAuth();
-  const [header, setHeader] = useState({ customer_id: '', location_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '', loyalty_points_redeemed: '' });
+  const [header, setHeader] = useState({ customer_id: '', sale_date: today(), is_interstate: false, payment_mode: 'cash', amount_paid: '', notes: '', loyalty_points_redeemed: '' });
   const [lines, setLines] = useState([emptyLine()]);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -28,19 +33,11 @@ export default function SaleForm() {
   });
   const products = data?.products ?? [];
   const customers = data?.customers ?? [];
-  const locations = data?.locations ?? [];
   const productsById = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products]);
   const customer = customers.find((c) => c.id === header.customer_id);
   const customerType = customer?.type ?? 'retail';
 
-  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '', location_id: '', loyalty_points_redeemed: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
-  useEffect(() => {
-    if (locations.length && !header.location_id) {
-      const def = locations.find((l) => l.is_default) ?? locations[0];
-      setHeader((h) => ({ ...h, location_id: def.id }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations]);
+  useEffect(() => { setHeader((h) => ({ ...h, customer_id: '', loyalty_points_redeemed: '' })); setLines([emptyLine()]); setErrors({}); }, [activeCompany?.id]);
 
   const computed = useMemo(() => computeSale(lines, header.is_interstate), [lines, header.is_interstate]);
   const t = computed.totals;
@@ -57,7 +54,18 @@ export default function SaleForm() {
   const setLine = (i, patch) => setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const pickProduct = (i, productId) => {
     const p = productsById[productId];
-    setLine(i, { product_id: productId, rate: p ? String(tierPrice(p, customerType)) : '', gst_rate: p ? String(p.gst_rate) : '' });
+    const level = customerType === 'wholesale' || customerType === 'dealer' ? customerType : 'retail';
+    setLine(i, {
+      product_id: productId,
+      price_level: level,
+      rate: p ? String(tierPrice(p, level)) : '',
+      gst_rate: p ? String(p.gst_rate) : '',
+    });
+  };
+
+  const applyPriceLevel = (i, level) => {
+    const p = productsById[lines[i]?.product_id];
+    setLine(i, { price_level: level, rate: p ? String(tierPrice(p, level)) : lines[i]?.rate });
   };
 
   async function save() {
@@ -66,7 +74,6 @@ export default function SaleForm() {
     try {
       const res = await api.post('/sales', {
         customer_id: header.customer_id || null,
-        location_id: header.location_id || null,
         sale_date: header.sale_date,
         is_interstate: header.is_interstate,
         payment_mode: header.payment_mode,
@@ -75,6 +82,7 @@ export default function SaleForm() {
         notes: header.notes || null,
         items: lines.filter((l) => l.product_id).map((l) => ({
           product_id: l.product_id, qty: Number(l.qty) || 0, rate: Number(l.rate) || 0,
+          price_level: l.price_level || 'retail',
           discount: Number(l.discount) || 0, gst_rate: Number(l.gst_rate) || 0,
         })),
       });
@@ -115,12 +123,6 @@ export default function SaleForm() {
             <select value={header.customer_id} onChange={(e) => setHeader((h) => ({ ...h, customer_id: e.target.value }))} className={selectCls}>
               <option value="">Walk-in</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.type}</option>)}
-            </select>
-          </Field>
-          <Field label="Location" error={err('location_id')}>
-            <select value={header.location_id} onChange={(e) => setHeader((h) => ({ ...h, location_id: e.target.value }))} className={selectCls}>
-              <option value="">Default</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </Field>
           <Field label="Sale date" required error={err('sale_date')}>
@@ -169,6 +171,7 @@ export default function SaleForm() {
             <thead>
               <tr className="border-b border-line text-left text-faint">
                 <th className="microlabel px-3 py-2 font-semibold">Product</th>
+                <th className="microlabel px-3 py-2 font-semibold">Price tier</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Qty</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Rate</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Disc.</th>
@@ -189,6 +192,11 @@ export default function SaleForm() {
                         {products.map((pr) => <option key={pr.id} value={pr.id}>{pr.name} · stock {pr.current_stock}</option>)}
                       </select>
                       {p && Number(line.qty) > p.current_stock && <span className="mt-1 block text-xs text-danger">Only {p.current_stock} in stock</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <select value={line.price_level || 'retail'} onChange={(e) => applyPriceLevel(i, e.target.value)} className={selectCls + ' min-w-[110px]'}>
+                        {PRICE_LEVELS.map((pl) => <option key={pl.value} value={pl.value}>{pl.label}</option>)}
+                      </select>
                     </td>
                     <td className="px-3 py-2"><input type="number" step="0.001" className={numInput} value={line.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
                     <td className="px-3 py-2"><input type="number" step="0.01" className={numInput} value={line.rate} onChange={(e) => setLine(i, { rate: e.target.value })} /></td>

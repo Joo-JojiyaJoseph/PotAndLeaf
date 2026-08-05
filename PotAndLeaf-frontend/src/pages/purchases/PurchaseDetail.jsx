@@ -72,6 +72,7 @@ export default function PurchaseDetail() {
           <InfoItem label="Purchase date" value={formatDate(p.purchase_date)} />
           <InfoItem label="Tax type" value={interstate ? 'Inter-state (IGST)' : 'Intra-state (CGST + SGST)'} />
           <InfoItem label="Confirmed at" value={p.confirmed_at ? formatDate(p.confirmed_at) : null} />
+          <InfoItem label="Entered by" value={p.entered_by} />
           <InfoItem label="Notes" value={p.notes} />
         </InfoGrid>
       </Section>

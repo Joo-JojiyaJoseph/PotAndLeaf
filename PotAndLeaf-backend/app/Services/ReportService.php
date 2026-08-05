@@ -284,4 +284,45 @@ class ReportService
             'invoiced' => round((float) RentalInvoice::forCompany($companyId)->whereBetween('period_from', [$from, $to])->sum('amount'), 2),
         ];
     }
+
+    /** Revenue breakdown by price tier used at POS (retail / wholesale / dealer). */
+    public function salesByPriceLevel(int|string $companyId, string $from, string $to): array
+    {
+        $from = Carbon::parse($from)->toDateString();
+        $to = Carbon::parse($to)->toDateString();
+
+        $rows = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sales.company_id', $companyId)
+            ->where('sales.status', 'confirmed')
+            ->whereBetween('sales.sale_date', [$from, $to])
+            ->selectRaw("COALESCE(sale_items.price_level, 'retail') as price_level,
+                COUNT(DISTINCT sales.id) as sale_count,
+                SUM(sale_items.qty) as qty,
+                SUM(sale_items.line_total) as revenue")
+            ->groupBy('price_level')
+            ->orderByDesc('revenue')
+            ->get()
+            ->map(fn ($r) => [
+                'price_level' => $r->price_level,
+                'label'       => match ($r->price_level) {
+                    'wholesale' => 'Wholesale',
+                    'dealer'    => 'Dealer / Landscaper',
+                    default     => 'Retail',
+                },
+                'sale_count'  => (int) $r->sale_count,
+                'qty'         => round((float) $r->qty, 3),
+                'revenue'     => round((float) $r->revenue, 2),
+            ])
+            ->values()
+            ->all();
+
+        $total = round(collect($rows)->sum('revenue'), 2);
+
+        return [
+            'range'   => ['from' => $from, 'to' => $to],
+            'rows'    => $rows,
+            'total'   => $total,
+        ];
+    }
 }

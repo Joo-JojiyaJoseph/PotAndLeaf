@@ -15,21 +15,19 @@ class StoreCompanyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'                  => ['required', 'string', 'max:150'],
-            'code'                  => ['required', 'string', 'max:30', Rule::unique('companies', 'code')->whereNull('deleted_at')],
-            'legal_name'            => ['nullable', 'string', 'max:200'],
-            'gst_number'            => ['nullable', 'string', 'max:20'],
-            'state'                 => ['nullable', 'string', 'max:60'],
-            'state_code'            => ['nullable', 'string', 'max:2'],
-            'address'               => ['nullable', 'string', 'max:500'],
-            'phone'                 => ['nullable', 'string', 'max:20'],
-            'email'                 => ['nullable', 'email', 'max:150'],
-            'username'              => ['required', 'string', 'max:80', Rule::unique('companies', 'username')->whereNull('deleted_at')],
-            'password'              => ['required', 'string', 'min:8', 'confirmed'],
-            'logo'                  => ['nullable', 'string', 'max:500'],
-            'photo'                 => ['nullable', 'string', 'max:500'],
-            'description'           => ['nullable', 'string', 'max:2000'],
-            'is_active'             => ['boolean'],
+            'name'        => ['required', 'string', 'max:150'],
+            'code'        => ['required', 'string', 'max:30', Rule::unique('companies', 'code')->whereNull('deleted_at')],
+            'legal_name'  => ['nullable', 'string', 'max:200'],
+            'gst_number'  => ['nullable', 'string', 'max:20'],
+            'state'       => ['nullable', 'string', 'max:60'],
+            'state_code'  => ['nullable', 'string', 'max:2'],
+            'address'     => ['nullable', 'string', 'max:500'],
+            'phone'       => ['nullable', 'string', 'max:20'],
+            'email'       => ['nullable', 'email', 'max:150'],
+            'logo'        => ['nullable', 'string', 'max:500'],
+            'photo'       => ['nullable', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'is_active'   => ['boolean'],
         ];
     }
 

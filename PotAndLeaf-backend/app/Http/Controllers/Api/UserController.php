@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Api\ApiResponse;
+use App\Support\ProtectedRecords;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,8 @@ class UserController extends Controller
         $company = $this->company($request);
         $this->allow($request, 'users.delete');
         $this->ensureMember($user, $company->id);
+
+        abort_if(ProtectedRecords::isProtectedUser($user) && $company->code === ProtectedRecords::HO_COMPANY_CODE, 403, 'The default HO admin cannot be removed from this company.');
 
         DB::transaction(function () use ($user, $company) {
             $this->syncCompanyRole($user, $company->id, null);   // drop this company's roles

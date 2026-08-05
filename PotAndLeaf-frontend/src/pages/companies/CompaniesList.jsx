@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BuildingOffice2Icon,
-  KeyIcon,
   PencilSquareIcon,
   PlusIcon,
   TrashIcon,
@@ -16,8 +15,7 @@ import { useToast } from '../../lib/toast';
 
 const empty = {
   name: '', code: '', gst_number: '', legal_name: '', state: '', state_code: '',
-  phone: '', email: '', address: '', description: '', username: '',
-  password: '', password_confirmation: '', logo: null, is_active: true,
+  phone: '', email: '', address: '', description: '', logo: null, is_active: true,
 };
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
@@ -29,9 +27,6 @@ export default function CompaniesList() {
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [deleting, setDeleting] = useState(null);
-  const [resetFor, setResetFor] = useState(null);
-  const [resetForm, setResetForm] = useState({ password: '', password_confirmation: '', generate: false });
-  const [tempPassword, setTempPassword] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['companies'],
@@ -43,10 +38,6 @@ export default function CompaniesList() {
     mutationFn: (payload) => {
       const body = { ...payload };
       if (body.logo) body.photo = body.logo;
-      if (payload.id && !body.password) {
-        delete body.password;
-        delete body.password_confirmation;
-      }
       return payload.id ? api.put(`/companies/${payload.id}`, body) : api.post('/companies', body);
     },
     onSuccess: (_r, payload) => {
@@ -67,23 +58,14 @@ export default function CompaniesList() {
       setDeleting(null);
       toast.success('Company deleted.');
     },
-  });
-
-  const resetM = useMutation({
-    mutationFn: ({ id, ...body }) => api.post(`/companies/${id}/reset-password`, body),
-    onSuccess: (res) => {
-      const temp = res.data?.data?.temporary_password;
-      if (temp) setTempPassword(temp);
-      else {
-        setResetFor(null);
-        toast.success('Password updated.');
-      }
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-    },
-    onError: (err) => toast.error(err.response?.data?.message ?? 'Reset failed.'),
+    onError: (err) => toast.error(err.response?.data?.message ?? 'Could not delete company.'),
   });
 
   async function onToggle(c, next) {
+    if (c.is_protected && !next) {
+      toast.error('This company cannot be deactivated.');
+      return;
+    }
     await api.patch(`/companies/${c.id}/status`, { is_active: next });
     toast.success(`${c.name} ${next ? 'activated' : 'deactivated'}`);
     queryClient.invalidateQueries({ queryKey: ['companies'] });
@@ -101,11 +83,7 @@ export default function CompaniesList() {
 
   const openNew = () => { setForm(empty); setErrors({}); setEditing({}); };
   const openEdit = (c) => {
-    setForm({
-      ...empty, ...c,
-      logo: c.logo ?? c.photo ?? null,
-      password: '', password_confirmation: '',
-    });
+    setForm({ ...empty, ...c, logo: c.logo ?? c.photo ?? null });
     setErrors({});
     setEditing(c);
   };
@@ -149,20 +127,14 @@ export default function CompaniesList() {
               <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
                 <StatusToggle active={Boolean(c.is_active)} onToggle={(next) => onToggle(c, next)} />
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => { setResetFor(c); setResetForm({ password: '', password_confirmation: '', generate: false }); setTempPassword(null); }}
-                    className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink"
-                    aria-label="Reset password"
-                    title="Reset password"
-                  >
-                    <KeyIcon className="size-4" />
-                  </button>
                   <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit">
                     <PencilSquareIcon className="size-4" />
                   </button>
-                  <button onClick={() => setDeleting(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete">
-                    <TrashIcon className="size-4" />
-                  </button>
+                  {!c.is_protected && (
+                    <button onClick={() => setDeleting(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete">
+                      <TrashIcon className="size-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -190,16 +162,7 @@ export default function CompaniesList() {
             </Field>
           </div>
           <Field label="Name" required error={err('name')}><Input value={form.name} onChange={set('name')} /></Field>
-          <Field label="Code" required error={err('code')}><Input value={form.code} onChange={set('code')} placeholder="CHK-XXX" /></Field>
-          <Field label="Username" required error={err('username')}><Input value={form.username || ''} onChange={set('username')} /></Field>
-          <Field label={editing?.id ? 'Password (leave blank to keep)' : 'Password'} required={!editing?.id} error={err('password')}>
-            <Input type="password" value={form.password} onChange={set('password')} />
-          </Field>
-          {(!editing?.id || form.password) && (
-            <Field label="Confirm password" required={!editing?.id} error={err('password_confirmation')}>
-              <Input type="password" value={form.password_confirmation} onChange={set('password_confirmation')} />
-            </Field>
-          )}
+          <Field label="Code" required error={err('code')}><Input value={form.code} onChange={set('code')} placeholder="CHK-XXX" disabled={Boolean(editing?.is_protected)} /></Field>
           <Field label="GST number" error={err('gst_number')}><Input value={form.gst_number || ''} onChange={set('gst_number')} /></Field>
           <Field label="Legal name" error={err('legal_name')}><Input value={form.legal_name || ''} onChange={set('legal_name')} /></Field>
           <Field label="State" error={err('state')}><Input value={form.state || ''} onChange={set('state')} /></Field>
@@ -226,50 +189,6 @@ export default function CompaniesList() {
             </select>
           </Field>
         </div>
-      </Modal>
-
-      <Modal
-        open={Boolean(resetFor)}
-        onClose={() => { setResetFor(null); setTempPassword(null); }}
-        title={`Reset password — ${resetFor?.name ?? ''}`}
-        footer={
-          tempPassword ? (
-            <Button size="sm" onClick={() => { setResetFor(null); setTempPassword(null); toast.success('Password reset complete.'); }}>Done</Button>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setResetFor(null)}>Cancel</Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={resetM.isPending}
-                onClick={() => resetM.mutate({ id: resetFor.id, generate: true })}
-              >
-                Generate temporary
-              </Button>
-              <Button
-                size="sm"
-                disabled={resetM.isPending || !resetForm.password}
-                onClick={() => resetM.mutate({ id: resetFor.id, password: resetForm.password, password_confirmation: resetForm.password_confirmation })}
-              >
-                {resetM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Set password'}
-              </Button>
-            </>
-          )
-        }
-      >
-        {tempPassword ? (
-          <div className="rounded-xl bg-leaf-soft/60 p-4 text-sm">
-            <p className="font-medium">Temporary password</p>
-            <p className="tnum mt-2 select-all text-lg font-semibold tracking-wide">{tempPassword}</p>
-            <p className="mt-2 text-xs text-muted">Copy this now — it won't be shown again.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted">Set a new password for <span className="font-medium text-ink">{resetFor?.username || resetFor?.name}</span>, or generate a temporary one.</p>
-            <Field label="New password"><Input type="password" value={resetForm.password} onChange={(e) => setResetForm((f) => ({ ...f, password: e.target.value }))} /></Field>
-            <Field label="Confirm"><Input type="password" value={resetForm.password_confirmation} onChange={(e) => setResetForm((f) => ({ ...f, password_confirmation: e.target.value }))} /></Field>
-          </div>
-        )}
       </Modal>
 
       <Modal

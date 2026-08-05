@@ -31,6 +31,7 @@ export default function ProductForm() {
   const [errors, setErrors] = useState({});
   const err = (k) => errors[k]?.[0];
   const [saving, setSaving] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
   const [margin, setMargin] = useState('40');
   const [pickedCompany, setPickedCompany] = useState(!isSuperAdmin || Boolean(companyId));
   const companyReady = isEdit || !isSuperAdmin || pickedCompany || Boolean(companyId);
@@ -70,9 +71,23 @@ export default function ProductForm() {
   }, [existing]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const blurValidate = (k, msg) => () => {
+    const val = form[k];
+    if (!val?.trim?.()) setErrors((e) => ({ ...e, [k]: [msg] }));
+    else setErrors((e) => { const n = { ...e }; delete n[k]; return n; });
+  };
 
   async function save() {
-    setErrors([]);
+    const clientErrors = {};
+    if (!form.sku?.trim()) clientErrors.sku = ['SKU is required.'];
+    if (!form.name?.trim()) clientErrors.name = ['Name is required.'];
+    if (Object.keys(clientErrors).length) {
+      setErrors(clientErrors);
+      return;
+    }
+    if (uploadBusy) return;
+
+    setErrors({});
     setSaving(true);
     // Send numbers as numbers; drop empty barcode so the server auto-generates.
     const payload = { ...form };
@@ -146,10 +161,10 @@ export default function ProductForm() {
         <Card className="p-5 lg:col-span-2">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="SKU" required error={err('sku')}>
-              <Input value={form.sku} onChange={set('sku')} placeholder="PLT-ROSE" />
+              <Input value={form.sku} onChange={set('sku')} onBlur={blurValidate('sku', 'SKU is required.')} placeholder="PLT-ROSE" />
             </Field>
             <Field label="Name" required error={err('name')}>
-              <Input value={form.name} onChange={set('name')} />
+              <Input value={form.name} onChange={set('name')} onBlur={blurValidate('name', 'Name is required.')} />
             </Field>
             <Field label="HSN code" error={err('hsn_code')}>
               <Input value={form.hsn_code} onChange={set('hsn_code')} />
@@ -278,11 +293,11 @@ export default function ProductForm() {
 
           <Card className="p-5">
             <div className="microlabel mb-3 text-faint">Photos</div>
-            <ImageGallery value={form.images} onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))} max={6} />
+            <ImageGallery value={form.images} onChange={(imgs) => setForm((f) => ({ ...f, images: imgs }))} max={6} onBusyChange={setUploadBusy} />
           </Card>
 
-          <Button className="w-full" onClick={save} disabled={saving}>
-            {saving ? <Spinner className="border-white/40 border-t-white" /> : isEdit ? 'Save changes' : 'Create product'}
+          <Button className="w-full" onClick={save} disabled={saving || uploadBusy}>
+            {uploadBusy ? 'Uploading photos…' : saving ? <Spinner className="border-white/40 border-t-white" /> : isEdit ? 'Save changes' : 'Create product'}
           </Button>
         </div>
       </div>

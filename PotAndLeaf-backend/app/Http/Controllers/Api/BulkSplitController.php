@@ -57,7 +57,7 @@ class BulkSplitController extends Controller
         $this->allow($request, 'bulk_splits.view');
         $this->sameCompany($request, $bulkSplit);
 
-        return $this->ok(new BulkSplitResource($bulkSplit->load(['items', 'sourceProduct:id,sku,name'])));
+        return $this->ok(new BulkSplitResource($bulkSplit->load(['items.units', 'sourceProduct:id,sku,name'])));
     }
 
     public function confirm(Request $request, BulkSplit $bulkSplit): JsonResponse

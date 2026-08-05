@@ -15,7 +15,7 @@ class StockTransfer extends Model
     use HasAuditColumns, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id', 'from_location_id', 'to_location_id', 'transfer_no',
+        'company_id', 'to_company_id', 'from_location_id', 'to_location_id', 'transfer_no',
         'transfer_date', 'status', 'notes', 'dispatched_at', 'received_at',
     ];
 
@@ -43,9 +43,19 @@ class StockTransfer extends Model
         return $this->belongsTo(Location::class, 'to_location_id');
     }
 
+    public function fromCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+
+    public function toCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'to_company_id');
+    }
+
     public function scopeForCompany($query, int|string $companyId)
     {
-        return $query->where('company_id', $companyId);
+        return $query->where(fn ($q) => $q->where('company_id', $companyId)->orWhere('to_company_id', $companyId));
     }
 
     public function isDraft(): bool

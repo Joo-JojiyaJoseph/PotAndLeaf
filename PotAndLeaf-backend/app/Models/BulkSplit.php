@@ -15,7 +15,7 @@ class BulkSplit extends Model
     use HasAuditColumns, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'company_id', 'source_product_id', 'source_product_name', 'split_no',
+        'company_id', 'source_product_id', 'source_purchase_id', 'source_product_name', 'split_no',
         'split_date', 'source_qty', 'source_unit_cost', 'total_cost', 'status',
         'notes', 'confirmed_at',
     ];
@@ -39,6 +39,16 @@ class BulkSplit extends Model
     public function items(): HasMany
     {
         return $this->hasMany(BulkSplitItem::class);
+    }
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(BulkSplitUnit::class);
+    }
+
+    public function sourcePurchase(): BelongsTo
+    {
+        return $this->belongsTo(Purchase::class, 'source_purchase_id');
     }
 
     public function scopeForCompany($query, int|string $companyId)

@@ -8,6 +8,10 @@ import { ConfirmProvider } from './lib/confirm';
 import App from './App';
 import './index.css';
 
+if (localStorage.getItem('pl_theme') === 'dark') {
+  document.documentElement.classList.add('dark');
+}
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });

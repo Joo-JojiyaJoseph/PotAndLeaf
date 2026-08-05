@@ -37,6 +37,7 @@ class CreateBulkSplit
             $split = $this->splits->create([
                 'company_id'          => $companyId,
                 'source_product_id'   => $source->id,
+                'source_purchase_id'  => $data['source_purchase_id'] ?? null,
                 'source_product_name' => $source->name,
                 'split_no'            => $this->splits->nextSplitNo($companyId),
                 'split_date'          => $data['split_date'],
@@ -50,13 +51,21 @@ class CreateBulkSplit
             $rows = [];
             foreach ($allocated as $i => $a) {
                 $productId = $data['items'][$i]['product_id'];
+                $unitCost = (float) $a['unit_cost'];
+                $marginPct = (float) ($data['markup_percent'] ?? 40);
+                $suggested = round($unitCost * (1 + $marginPct / 100), 2);
+                $retail = isset($data['items'][$i]['retail_price'])
+                    ? (float) $data['items'][$i]['retail_price']
+                    : $suggested;
                 $rows[] = [
-                    'product_id'   => $productId,
-                    'product_name' => $names[$productId] ?? 'Item',
-                    'qty'          => $a['qty'],
-                    'weight'       => $a['weight'],
-                    'cost_alloc'   => $a['cost_alloc'],
-                    'unit_cost'    => $a['unit_cost'],
+                    'product_id'       => $productId,
+                    'product_name'     => $names[$productId] ?? 'Item',
+                    'qty'              => $a['qty'],
+                    'weight'           => $a['weight'],
+                    'cost_alloc'       => $a['cost_alloc'],
+                    'unit_cost'        => $a['unit_cost'],
+                    'suggested_retail' => $suggested,
+                    'retail_price'     => $retail,
                 ];
             }
             $split->items()->createMany($rows);

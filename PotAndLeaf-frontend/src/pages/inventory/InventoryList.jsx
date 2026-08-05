@@ -10,7 +10,6 @@ const TABS = [
   { value: 'levels', label: 'Stock levels' },
   { value: 'valuation', label: 'Valuation' },
   { value: 'movement', label: 'Fast / slow / dead' },
-  { value: 'locations', label: 'By location' },
 ];
 const classTone = { fast: 'active', slow: 'warning', dead: 'blocked' };
 
@@ -207,40 +206,6 @@ function MovementTab() {
   );
 }
 
-function ByLocationTab() {
-  const { activeCompany } = useAuth();
-  const { data, isLoading } = useQuery({ queryKey: ['inventory', 'by-location', activeCompany?.id], queryFn: () => api.get('/inventory/by-location').then((r) => r.data.data.balances) });
-  if (isLoading) return <div className="flex justify-center py-16"><Spinner className="size-6" /></div>;
-  const rows = data ?? [];
-  const groups = rows.reduce((acc, r) => { (acc[r.location_name] ||= []).push(r); return acc; }, {});
-  if (rows.length === 0) return <Card className="px-4 py-16 text-center text-sm text-muted">No per-location stock yet. Confirm a purchase or a transfer to populate locations.</Card>;
-  return (
-    <div className="space-y-4">
-      {Object.entries(groups).map(([loc, items]) => (
-        <Card key={loc} className="overflow-hidden">
-          <div className="border-b border-line bg-[#FAFBFA] px-4 py-2.5 microlabel font-semibold text-ink">{loc}</div>
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-line text-left text-faint">
-              <th className="microlabel px-4 py-2 font-semibold">SKU</th>
-              <th className="microlabel px-4 py-2 font-semibold">Product</th>
-              <th className="microlabel px-4 py-2 text-right font-semibold">Qty here</th>
-            </tr></thead>
-            <tbody>
-              {items.map((r) => (
-                <tr key={r.location_id + r.product_id} className="border-b border-line/60 last:border-0">
-                  <td className="tnum px-4 py-2 text-xs">{r.sku}</td>
-                  <td className="px-4 py-2 font-medium">{r.product_name}</td>
-                  <td className="tnum px-4 py-2 text-right">{r.qty}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 export default function InventoryList() {
   const [tab, setTab] = useState('levels');
   const [ledgerProduct, setLedgerProduct] = useState(null);
@@ -262,7 +227,6 @@ export default function InventoryList() {
       {tab === 'levels' && <LevelsTab onLedger={setLedgerProduct} />}
       {tab === 'valuation' && <ValuationTab />}
       {tab === 'movement' && <MovementTab />}
-      {tab === 'locations' && <ByLocationTab />}
       <LedgerModal product={ledgerProduct} onClose={() => setLedgerProduct(null)} />
     </div>
   );

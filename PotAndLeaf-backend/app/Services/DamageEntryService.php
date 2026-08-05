@@ -10,10 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class DamageEntryService
 {
-    public function __construct(
-        private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
-    ) {}
+    public function __construct(private readonly InventoryService $inventory) {}
 
     public function list(int|string $companyId, array $filters): LengthAwarePaginator
     {
@@ -21,12 +18,8 @@ class DamageEntryService
 
         return DamageEntry::query()
             ->forCompany($companyId)
-            ->with([
-                'product:id,sku,name',
-                'location:id,name',
-            ])
+            ->with(['product:id,sku,name'])
             ->when(filled($filters['product_id'] ?? null), fn ($q) => $q->where('product_id', $filters['product_id']))
-            ->when(filled($filters['location_id'] ?? null), fn ($q) => $q->where('location_id', $filters['location_id']))
             ->when(filled($filters['from'] ?? null), fn ($q) => $q->whereDate('entry_date', '>=', $filters['from']))
             ->when(filled($filters['to'] ?? null), fn ($q) => $q->whereDate('entry_date', '<=', $filters['to']))
             ->orderByDesc('entry_date')
@@ -55,20 +48,10 @@ class DamageEntryService
                 ]);
             }
 
-            $locationId = $data['location_id'] ?? null;
-            if ($locationId) {
-                $available = $this->locations->available($locationId, $product->id);
-                if ($available < $qty) {
-                    throw ValidationException::withMessages([
-                        'qty' => "Only {$available} units available at the selected location.",
-                    ]);
-                }
-            }
-
             $entry = DamageEntry::create([
                 'company_id'  => $companyId,
                 'product_id'  => $product->id,
-                'location_id' => $locationId,
+                'location_id' => null,
                 'entry_no'    => $this->nextEntryNo($companyId),
                 'entry_date'  => $data['entry_date'] ?? now()->toDateString(),
                 'qty'         => $qty,
@@ -89,11 +72,7 @@ class DamageEntryService
             );
             $product->save();
 
-            if ($locationId) {
-                $this->locations->adjust($companyId, $locationId, $product->id, 'out', $qty);
-            }
-
-            return $entry->load(['product:id,sku,name', 'location:id,name']);
+            return $entry->load(['product:id,sku,name']);
         });
     }
 

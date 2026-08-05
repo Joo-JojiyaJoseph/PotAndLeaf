@@ -20,8 +20,6 @@ class UpdateCompanyRequest extends StoreCompanyRequest
             'address'     => ['nullable', 'string', 'max:500'],
             'phone'       => ['nullable', 'string', 'max:20'],
             'email'       => ['nullable', 'email', 'max:150'],
-            'username'    => ['nullable', 'string', 'max:80', Rule::unique('companies', 'username')->whereNull('deleted_at')->ignore($id)],
-            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'logo'        => ['nullable', 'string', 'max:500'],
             'photo'       => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:2000'],

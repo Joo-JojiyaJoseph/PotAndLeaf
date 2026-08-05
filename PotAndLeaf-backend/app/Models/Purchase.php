@@ -50,6 +50,11 @@ class Purchase extends Model
         return $this->hasMany(SupplierPayment::class);
     }
 
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

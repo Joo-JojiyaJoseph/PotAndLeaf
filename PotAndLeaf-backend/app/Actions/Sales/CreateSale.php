@@ -91,6 +91,7 @@ class CreateSale
                     'hsn_code'      => $meta->hsn_code ?? null,
                     'qty'           => $item['qty'],
                     'rate'          => $item['rate'],
+                    'price_level'   => $item['price_level'] ?? 'retail',
                     'discount'      => $item['discount'] ?? 0,
                     'gst_rate'      => $item['gst_rate'] ?? 0,
                     'taxable_value' => $calc['taxable_value'],

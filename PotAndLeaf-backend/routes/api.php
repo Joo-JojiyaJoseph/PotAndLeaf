@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ProductionController;
 use App\Http\Controllers\Api\RentalController;
 use App\Http\Controllers\Api\TransferController;
+use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MasterDataController;
 use App\Http\Controllers\Api\ProductController;
@@ -61,7 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Company management (HO super admin only — not company-scoped)
     Route::get('companies', [CompanyController::class, 'index']);
     Route::patch('companies/{company}/status', [CompanyController::class, 'toggleStatus']);
-    Route::post('companies/{company}/reset-password', [CompanyController::class, 'resetPassword']);
     Route::post('companies', [CompanyController::class, 'store']);
     Route::get('companies/{company}', [CompanyController::class, 'show']);
     Route::put('companies/{company}', [CompanyController::class, 'update']);
@@ -124,6 +124,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Module 12 — Customer master (CRUD)
         Route::get('customers', [CustomerController::class, 'index']);
+        Route::get('loyalty', [LoyaltyController::class, 'index']);
         Route::post('customers', [CustomerController::class, 'store']);
         Route::get('customers/{customer}/purchase-history', [CustomerController::class, 'purchaseHistory']);
         Route::get('customers/{customer}', [CustomerController::class, 'show']);
@@ -200,7 +201,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('reports/margin/export', [ReportController::class, 'exportMargin']);
         Route::get('reports/profit', [ReportController::class, 'profit']);
         Route::get('reports/profit/export', [ReportController::class, 'exportProfit']);
+        Route::get('reports/price-levels', [ReportController::class, 'priceLevels']);
 
+        Route::get('activity-monitoring/form-data', [ActivityMonitoringController::class, 'formData']);
         Route::get('activity-monitoring', [ActivityMonitoringController::class, 'index']);
 
         Route::get('backups', [BackupController::class, 'index']);

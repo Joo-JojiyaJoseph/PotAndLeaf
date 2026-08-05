@@ -5,9 +5,8 @@ namespace App\Actions\Purchases;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
-use App\Models\Location;
+use App\Services\ActivityLogService;
 use App\Services\InventoryService;
-use App\Services\LocationStockService;
 use App\Services\SellAsFulfillmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,8 +23,8 @@ class ConfirmPurchase
 {
     public function __construct(
         private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
         private readonly SellAsFulfillmentService $sellAs,
+        private readonly ActivityLogService $activity,
     ) {}
 
     public function handle(Purchase $purchase, ?int $userId = null): Purchase
@@ -38,11 +37,6 @@ class ConfirmPurchase
 
         return DB::transaction(function () use ($purchase, $userId) {
             $purchase->loadMissing('items');
-
-            // Where the received stock physically lands (falls back to the default location).
-            $location = $purchase->location_id
-                ? Location::forCompany($purchase->company_id)->find($purchase->location_id)
-                : $this->locations->defaultLocation($purchase->company_id);
 
             foreach ($purchase->items as $item) {
                 if (! $item->product_id) {
@@ -79,10 +73,6 @@ class ConfirmPurchase
 
                 $product->cost_price = $item->landed_unit_cost;
                 $product->save();
-
-                if ($location) {
-                    $this->locations->adjust($purchase->company_id, $location->id, $product->id, 'in', (float) $item->qty);
-                }
             }
 
             // A confirmed purchase is money owed to the supplier.
@@ -95,7 +85,13 @@ class ConfirmPurchase
 
             $purchase->update(['status' => 'confirmed', 'confirmed_at' => now()]);
 
-            return $purchase->refresh()->load(['supplier', 'items']);
+            $this->activity->log(
+                $purchase->company_id, $userId, 'confirm', 'purchases', 'purchase', $purchase->id,
+                "Purchase {$purchase->purchase_no} confirmed",
+                ['grand_total' => (float) $purchase->grand_total, 'created_by' => $purchase->created_by],
+            );
+
+            return $purchase->refresh()->load(['supplier', 'items', 'createdBy:id,name']);
         });
     }
 }

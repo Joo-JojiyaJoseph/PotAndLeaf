@@ -12,7 +12,7 @@ import {
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
-import { ImageUpload } from '../../components/media';
+import { ImageUpload, mediaUrl } from '../../components/media';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../lib/confirm';
 import StatusToggle from '../../components/StatusToggle';
@@ -196,7 +196,7 @@ export default function SuppliersList() {
               <div className="flex items-start gap-3">
                 <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-leaf-soft">
                   {s.photo
-                    ? <img src={s.photo} alt="" className="size-full object-cover" />
+                    ? <img src={mediaUrl(s.photo)} alt="" className="size-full object-cover" />
                     : <PhotoIcon className="size-7 text-leaf/50" />}
                 </div>
                 <div className="min-w-0 flex-1">

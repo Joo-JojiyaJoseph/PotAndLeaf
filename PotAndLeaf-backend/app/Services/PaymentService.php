@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
+    public function __construct(private readonly ActivityLogService $activity) {}
+
     public function list(int|string $companyId, array $filters): LengthAwarePaginator
     {
         $perPage = min((int) ($filters['per_page'] ?? 20), 100);
@@ -26,7 +28,7 @@ class PaymentService
 
     public function record(int|string $companyId, array $data, ?int $userId = null): SupplierPayment
     {
-        return DB::transaction(function () use ($companyId, $data) {
+        return DB::transaction(function () use ($companyId, $data, $userId) {
             $payment = SupplierPayment::create([
                 'company_id'   => $companyId,
                 'supplier_id'  => $data['supplier_id'],
@@ -45,19 +47,35 @@ class PaymentService
                 $supplier->save();
             }
 
+            if (! empty($data['purchase_id'])) {
+                $this->syncPurchasePaid($data['purchase_id']);
+            }
+
+            $this->activity->log($companyId, $userId, 'create', 'payment', 'supplier_payment', $payment->id, "Payment {$payment->payment_no} recorded");
+
             return $payment->load(['supplier:id,name', 'purchase:id,purchase_no']);
         });
     }
 
-    public function delete(SupplierPayment $payment): void
+    public function delete(SupplierPayment $payment, ?int $userId = null): void
     {
-        DB::transaction(function () use ($payment) {
+        DB::transaction(function () use ($payment, $userId) {
+            $purchaseId = $payment->purchase_id;
+            $companyId = $payment->company_id;
+            $paymentNo = $payment->payment_no;
+
             $supplier = Supplier::where('company_id', $payment->company_id)->lockForUpdate()->find($payment->supplier_id);
             if ($supplier) {
                 $supplier->outstanding = (float) $supplier->outstanding + (float) $payment->amount;
                 $supplier->save();
             }
             $payment->delete();
+
+            if ($purchaseId) {
+                $this->syncPurchasePaid($purchaseId);
+            }
+
+            $this->activity->log($companyId, $userId, 'delete', 'payment', 'supplier_payment', $payment->id, "Payment {$paymentNo} removed");
         });
     }
 
@@ -93,6 +111,21 @@ class PaymentService
             })
             ->values()
             ->all();
+    }
+
+    private function syncPurchasePaid(string $purchaseId): void
+    {
+        $purchase = Purchase::lockForUpdate()->find($purchaseId);
+        if (! $purchase) {
+            return;
+        }
+
+        $paid = (float) SupplierPayment::query()
+            ->where('purchase_id', $purchaseId)
+            ->sum('amount');
+
+        $purchase->amount_paid = round($paid, 2);
+        $purchase->save();
     }
 
     private function nextPaymentNo(int|string $companyId): string

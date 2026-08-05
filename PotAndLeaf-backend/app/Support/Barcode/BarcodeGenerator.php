@@ -17,4 +17,12 @@ class BarcodeGenerator
 
         return sprintf('PL%s-%06d', $companyId, $seq);
     }
+
+    /** Unique barcode for an individual saleable unit after a bulk split. */
+    public function forSplitUnit(int|string $companyId, string $splitNo, int $unitNo): string
+    {
+        $safe = preg_replace('/[^A-Z0-9]/', '', strtoupper($splitNo)) ?: 'SPLIT';
+
+        return sprintf('PL%s-%s-%04d', $companyId, substr($safe, -8), $unitNo);
+    }
 }

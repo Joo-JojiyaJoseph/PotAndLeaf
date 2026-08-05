@@ -59,3 +59,25 @@ body {
 .toast-in { animation: toastIn .22s cubic-bezier(.2,.7,.3,1); }
 .dialog-in { animation: dialogIn .18s cubic-bezier(.2,.7,.3,1); }
 @media (prefers-reduced-motion: reduce) { .toast-in, .dialog-in { animation: none; } }
+
+html.dark {
+  --color-paper: #1a211e;
+  --color-sidebar: #222b27;
+  --color-surface: #2a332f;
+  --color-ink: #e8eee9;
+  --color-muted: #9aaba2;
+  --color-faint: #6b7a72;
+  --color-line: #3a4540;
+  --color-line-strong: #4a5650;
+  --color-leaf-soft: #2a3318;
+  --color-terracotta-soft: #3a2e24;
+  --color-amber-soft: #3a3018;
+  --color-danger-soft: #3a2420;
+  --color-info-soft: #1e2a33;
+  --shadow-soft: 0 6px 18px rgba(0,0,0,0.25);
+  --shadow-card: 0 8px 25px rgba(0,0,0,0.3);
+  --shadow-pop: 0 12px 34px rgba(0,0,0,0.4);
+}
+
+html, body, #root { transition: background-color 0.2s ease, color 0.2s ease; }
+button, a, input, select, textarea { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }

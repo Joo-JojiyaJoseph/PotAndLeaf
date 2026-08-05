@@ -62,6 +62,7 @@ export default function SaleDetail() {
           <InfoItem label="Amount paid" value={formatCurrency(s.amount_paid)} mono />
           <InfoItem label="Tax type" value={s.is_interstate ? 'Inter-state (IGST)' : 'Intra-state (CGST + SGST)'} />
           <InfoItem label="Confirmed at" value={s.confirmed_at ? formatDate(s.confirmed_at) : null} />
+          <InfoItem label="Entered by" value={s.entered_by} />
           <InfoItem label="Notes" value={s.notes} />
         </InfoGrid>
       </Section>

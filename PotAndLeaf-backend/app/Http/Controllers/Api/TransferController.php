@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Transfer\ReceiveTransferRequest;
 use App\Http\Requests\Transfer\StoreTransferRequest;
 use App\Http\Resources\StockTransferResource;
-use App\Models\Location;
+use App\Models\Company;
 use App\Models\Product;
 use App\Models\StockTransfer;
 use App\Services\TransferService;
@@ -33,14 +33,22 @@ class TransferController extends Controller
         $company = $this->company($request);
         $this->allow($request, 'transfers.create');
 
-        $locations = Location::forCompany($company->id)->where('is_active', true)->orderByDesc('is_default')->orderBy('name')
-            ->get(['id', 'name', 'type', 'is_default'])
-            ->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'type' => $l->type, 'is_default' => (bool) $l->is_default]);
+        $user = $request->user();
+        if ($user->is_super_admin) {
+            $companies = Company::active()->where('id', '!=', $company->id)->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'code' => $c->code]);
+        } else {
+            $companies = $user->companies()->where('companies.id', '!=', $company->id)->where('is_active', true)
+                ->orderBy('companies.name')
+                ->get(['companies.id', 'companies.name', 'companies.code'])
+                ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'code' => $c->code]);
+        }
 
-        $products = Product::forCompany($company->id)->orderBy('name')->get(['id', 'sku', 'name'])
-            ->map(fn ($p) => ['id' => $p->id, 'sku' => $p->sku, 'name' => $p->name]);
+        $products = Product::forCompany($company->id)->orderBy('name')->get(['id', 'sku', 'name', 'current_stock'])
+            ->map(fn ($p) => ['id' => $p->id, 'sku' => $p->sku, 'name' => $p->name, 'current_stock' => (float) $p->current_stock]);
 
-        return $this->ok(['locations' => $locations, 'products' => $products]);
+        return $this->ok(['companies' => $companies, 'products' => $products, 'from_company' => ['id' => $company->id, 'name' => $company->name]]);
     }
 
     public function store(StoreTransferRequest $request): JsonResponse
@@ -54,22 +62,22 @@ class TransferController extends Controller
     public function show(Request $request, StockTransfer $stockTransfer): JsonResponse
     {
         $this->allow($request, 'transfers.view');
-        $this->sameCompany($request, $stockTransfer);
+        $this->sameCompanyOrDestination($request, $stockTransfer);
 
-        return $this->ok(new StockTransferResource($stockTransfer->load(['items', 'fromLocation:id,name', 'toLocation:id,name'])));
+        return $this->ok(new StockTransferResource($stockTransfer->load(['items', 'fromCompany:id,name', 'toCompany:id,name'])));
     }
 
     public function dispatchTransfer(Request $request, StockTransfer $stockTransfer): JsonResponse
     {
         $this->allow($request, 'transfers.dispatch');
-        $this->sameCompany($request, $stockTransfer);
+        $this->sameSourceCompany($request, $stockTransfer);
 
         return $this->ok(new StockTransferResource($this->transfers->dispatch($stockTransfer, $request->user()->id)), 'Transfer dispatched — stock in transit.');
     }
 
     public function receive(ReceiveTransferRequest $request, StockTransfer $stockTransfer): JsonResponse
     {
-        $this->sameCompany($request, $stockTransfer);
+        $this->sameDestinationCompany($request, $stockTransfer);
 
         $receipts = collect($request->validated()['receipts'] ?? [])->mapWithKeys(fn ($r) => [$r['id'] => $r['received_qty']])->all();
 
@@ -79,7 +87,7 @@ class TransferController extends Controller
     public function destroy(Request $request, StockTransfer $stockTransfer): JsonResponse
     {
         $this->allow($request, 'transfers.delete');
-        $this->sameCompany($request, $stockTransfer);
+        $this->sameSourceCompany($request, $stockTransfer);
         $this->transfers->cancel($stockTransfer, $request->user()->id);
 
         return $this->message('Transfer cancelled.');
@@ -95,8 +103,22 @@ class TransferController extends Controller
         abort_unless($request->user()->hasPermission($permission, $this->company($request)->id), 403);
     }
 
-    private function sameCompany(Request $request, StockTransfer $transfer): void
+    private function sameCompanyOrDestination(Request $request, StockTransfer $transfer): void
+    {
+        $companyId = (string) $this->company($request)->id;
+        abort_unless(
+            (string) $transfer->company_id === $companyId || (string) $transfer->to_company_id === $companyId,
+            404
+        );
+    }
+
+    private function sameSourceCompany(Request $request, StockTransfer $transfer): void
     {
         abort_unless((string) $transfer->company_id === (string) $this->company($request)->id, 404);
+    }
+
+    private function sameDestinationCompany(Request $request, StockTransfer $transfer): void
+    {
+        abort_unless((string) $transfer->to_company_id === (string) $this->company($request)->id, 404);
     }
 }

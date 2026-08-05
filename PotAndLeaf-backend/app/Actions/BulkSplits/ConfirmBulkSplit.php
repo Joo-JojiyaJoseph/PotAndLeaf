@@ -3,8 +3,11 @@
 namespace App\Actions\BulkSplits;
 
 use App\Models\BulkSplit;
+use App\Models\BulkSplitUnit;
 use App\Models\Product;
+use App\Services\ActivityLogService;
 use App\Services\InventoryService;
+use App\Support\Barcode\BarcodeGenerator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -12,10 +15,17 @@ use Illuminate\Validation\ValidationException;
  * Confirming a split posts the stock: the source is drawn down and each output
  * is received at its redistributed unit cost (which also becomes the output's
  * new cost price). Guarded so the source can't go negative.
+ * Generates a unique barcode per whole saleable unit for traceability.
  */
 class ConfirmBulkSplit
 {
-    public function __construct(private readonly InventoryService $inventory) {}
+    private int $unitSeq = 0;
+
+    public function __construct(
+        private readonly InventoryService $inventory,
+        private readonly BarcodeGenerator $barcodes,
+        private readonly ActivityLogService $activity,
+    ) {}
 
     public function handle(BulkSplit $split, ?int $userId = null): BulkSplit
     {
@@ -25,6 +35,7 @@ class ConfirmBulkSplit
 
         return DB::transaction(function () use ($split, $userId) {
             $split->loadMissing('items');
+            $this->unitSeq = (int) BulkSplitUnit::whereHas('split', fn ($q) => $q->where('company_id', $split->company_id))->count();
 
             $source = Product::forCompany($split->company_id)->lockForUpdate()->find($split->source_product_id);
             if (! $source) {
@@ -57,12 +68,51 @@ class ConfirmBulkSplit
                     referenceId: $split->id, note: "Split {$split->split_no}", userId: $userId,
                 );
                 $target->cost_price = $item->unit_cost;
+                if ($item->retail_price) {
+                    $target->retail_price = $item->retail_price;
+                }
                 $target->save();
+
+                $this->createUnitBarcodes($split, $item);
             }
 
             $split->update(['status' => 'confirmed', 'confirmed_at' => now()]);
 
-            return $split->refresh()->load(['items', 'sourceProduct:id,sku,name']);
+            $this->activity->log(
+                $split->company_id, $userId, 'confirm', 'bulk_split', 'bulk_split', $split->id,
+                "Bulk split {$split->split_no} confirmed",
+            );
+
+            return $split->refresh()->load(['items.units', 'sourceProduct:id,sku,name']);
         });
+    }
+
+    private function createUnitBarcodes(BulkSplit $split, $item): void
+    {
+        $count = max(1, (int) floor((float) $item->qty));
+        for ($n = 1; $n <= $count; $n++) {
+            $this->unitSeq++;
+            $barcode = $this->uniqueBarcode($split, $this->unitSeq);
+            BulkSplitUnit::create([
+                'bulk_split_id'      => $split->id,
+                'bulk_split_item_id' => $item->id,
+                'product_id'         => $item->product_id,
+                'barcode'            => $barcode,
+                'unit_no'            => $n,
+            ]);
+        }
+    }
+
+    private function uniqueBarcode(BulkSplit $split, int $seq): string
+    {
+        do {
+            $code = $this->barcodes->forSplitUnit($split->company_id, $split->split_no, $seq);
+            $seq++;
+        } while (
+            BulkSplitUnit::where('barcode', $code)->exists()
+            || Product::forCompany($split->company_id)->where('barcode', $code)->exists()
+        );
+
+        return $code;
     }
 }

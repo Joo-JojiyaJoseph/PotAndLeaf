@@ -13,7 +13,6 @@ class ProductionService
 {
     public function __construct(
         private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
     ) {}
 
     // ---- Bill of Materials ----
@@ -107,9 +106,6 @@ class ProductionService
 
         return DB::transaction(function () use ($order, $bom, $userId) {
             $factor = (float) $bom->output_qty > 0 ? (float) $order->output_quantity / (float) $bom->output_qty : 0.0;
-            $location = $order->location_id
-                ? \App\Models\Location::forCompany($order->company_id)->find($order->location_id)
-                : $this->locations->defaultLocation($order->company_id);
 
             // Pre-check stock for all components.
             $plan = [];
@@ -136,9 +132,6 @@ class ProductionService
                     note: "Production {$order->order_no}", userId: $userId,
                 );
                 $product->save();
-                if ($location) {
-                    $this->locations->adjust($order->company_id, $location->id, $product->id, 'out', $needed);
-                }
                 $lineCost = round($needed * $unitCost, 2);
                 $inputCost += $lineCost;
                 $order->items()->create([
@@ -161,9 +154,6 @@ class ProductionService
                 );
                 $output->cost_price = $unitCost;
                 $output->save();
-                if ($location) {
-                    $this->locations->adjust($order->company_id, $location->id, $output->id, 'in', $outQty);
-                }
             }
 
             $order->update([
@@ -183,9 +173,6 @@ class ProductionService
         return DB::transaction(function () use ($order, $userId) {
             if ($order->isCompleted()) {
                 $order->loadMissing('items');
-                $location = $order->location_id
-                    ? \App\Models\Location::forCompany($order->company_id)->find($order->location_id)
-                    : $this->locations->defaultLocation($order->company_id);
 
                 // Un-produce the output.
                 $output = Product::forCompany($order->company_id)->lockForUpdate()->find($order->output_product_id);
@@ -196,9 +183,6 @@ class ProductionService
                         referenceId: $order->id, note: "Reversal of {$order->order_no}", userId: $userId,
                     );
                     $output->save();
-                    if ($location) {
-                        $this->locations->adjust($order->company_id, $location->id, $output->id, 'out', (float) $order->output_quantity);
-                    }
                 }
                 // Return the inputs.
                 foreach ($order->items as $item) {
@@ -215,9 +199,6 @@ class ProductionService
                         referenceId: $order->id, note: "Reversal of {$order->order_no}", userId: $userId,
                     );
                     $product->save();
-                    if ($location) {
-                        $this->locations->adjust($order->company_id, $location->id, $product->id, 'in', (float) $item->qty);
-                    }
                 }
             }
             $order->update(['status' => 'cancelled']);

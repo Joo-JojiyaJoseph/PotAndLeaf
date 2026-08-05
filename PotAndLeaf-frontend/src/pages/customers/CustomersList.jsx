@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MagnifyingGlassIcon, PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PencilSquareIcon, PlusIcon, TrashIcon, EyeIcon, PhotoIcon, UserIcon } from '@heroicons/react/24/outline';
+import { formatCurrency } from '../../lib/format';
+import { mediaUrl } from '../../components/media';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
@@ -86,44 +88,47 @@ export default function CustomersList() {
         </select>
       </div>
 
-      <Card className="overflow-hidden">
-        {isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
-          : isError ? <div className="px-4 py-12 text-center text-sm text-muted">Couldn't load customers.</div>
-          : rows.length === 0 ? (
-            <div className="px-4 py-16 text-center"><p className="text-sm font-medium">No customers yet</p><p className="mt-1 text-sm text-muted">Add your first customer.</p></div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-line text-left text-faint">
-                <th className="microlabel px-4 py-2.5 font-semibold">Code</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Name</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Type</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Phone</th>
-                <th className="microlabel px-4 py-2.5 text-right font-semibold">Outstanding</th>
-                <th className="microlabel px-4 py-2.5 font-semibold">Status</th>
-                <th className="microlabel px-4 py-2.5" />
-              </tr></thead>
-              <tbody>
-                {rows.map((c) => (
-                  <tr key={c.id} className="border-b border-line/60 last:border-0 hover:bg-sidebar/60">
-                    <td className="tnum px-4 py-2.5 text-xs">{c.customer_code}</td>
-                    <td className="px-4 py-2.5"><button onClick={() => navigate(`/customers/${c.id}`)} className="font-medium text-ink hover:text-leaf">{c.name}</button></td>
-                    <td className="px-4 py-2.5"><Badge tone={typeTone[c.type] ?? 'default'}>{c.type}</Badge></td>
-                    <td className="tnum px-4 py-2.5 text-xs text-muted">{c.phone || '—'}</td>
-                    <td className="tnum px-4 py-2.5 text-right text-muted">₹{c.outstanding?.toLocaleString('en-IN') ?? 0}</td>
-                    <td className="px-4 py-2.5">{c.status === 'blocked' || !can('customers.update') ? <Badge tone={c.status === 'active' ? 'active' : c.status === 'blocked' ? 'blocked' : 'inactive'}>{c.status}</Badge> : <StatusToggle active={c.status === 'active'} onToggle={(next) => onToggle(c, next)} />}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {can('customers.update') && <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit"><PencilSquareIcon className="size-4" /></button>}
-                        {can('customers.delete') && <button onClick={() => onDelete(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete"><TrashIcon className="size-4" /></button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        {!isLoading && rows.length > 0 && <div className="border-t border-line px-3"><Pagination meta={data?.meta} onPage={setPage} /></div>}
-      </Card>
+      {isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
+        : isError ? <Card className="px-4 py-12 text-center text-sm text-muted">Couldn't load customers.</Card>
+        : rows.length === 0 ? (
+          <Card className="px-4 py-16 text-center"><p className="text-sm font-medium">No customers yet</p><p className="mt-1 text-sm text-muted">Add your first customer.</p></Card>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {rows.map((c) => (
+                <Card key={c.id} className="flex flex-col overflow-hidden p-4 transition-shadow hover:shadow-card">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-leaf-soft">
+                      {c.photo
+                        ? <img src={mediaUrl(c.photo)} alt="" className="size-full object-cover" />
+                        : <UserIcon className="size-7 text-leaf/50" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{c.name}</p>
+                      <p className="tnum text-xs text-muted">{c.customer_code}</p>
+                      <Badge tone={typeTone[c.type] ?? 'default'}>{c.type}</Badge>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-muted">
+                    <p>{c.phone || 'No phone'}{c.email ? ` · ${c.email}` : ''}</p>
+                    <p className="tnum">Outstanding {formatCurrency(c.outstanding ?? 0)} · {c.loyalty_points ?? 0} pts</p>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                    {c.status === 'blocked' || !can('customers.update')
+                      ? <Badge tone={c.status === 'active' ? 'active' : c.status === 'blocked' ? 'blocked' : 'inactive'}>{c.status}</Badge>
+                      : <StatusToggle active={c.status === 'active'} onToggle={(next) => onToggle(c, next)} />}
+                    <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/customers/${c.id}`)}><EyeIcon className="size-4" /> View</Button>
+                      {can('customers.update') && <button onClick={() => openEdit(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink" aria-label="Edit"><PencilSquareIcon className="size-4" /></button>}
+                      {can('customers.delete') && <button onClick={() => onDelete(c)} className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-danger" aria-label="Delete"><TrashIcon className="size-4" /></button>}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <Pagination meta={data?.meta} onPage={setPage} />
+          </>
+        )}
 
       <Modal
         open={editing !== null}

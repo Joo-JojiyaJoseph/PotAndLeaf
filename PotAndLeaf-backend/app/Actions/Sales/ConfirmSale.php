@@ -5,9 +5,8 @@ namespace App\Actions\Sales;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\Location;
+use App\Services\ActivityLogService;
 use App\Services\InventoryService;
-use App\Services\LocationStockService;
 use App\Services\LoyaltyService;
 use App\Services\PoolStockService;
 use App\Services\SupervisorCommissionService;
@@ -24,10 +23,10 @@ class ConfirmSale
 {
     public function __construct(
         private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
         private readonly LoyaltyService $loyalty,
         private readonly SupervisorCommissionService $supervisorCommission,
         private readonly PoolStockService $pool,
+        private readonly ActivityLogService $activity,
     ) {}
 
     public function handle(Sale $sale, ?int $userId = null): Sale
@@ -38,10 +37,6 @@ class ConfirmSale
 
         return DB::transaction(function () use ($sale, $userId) {
             $sale->loadMissing('items');
-
-            $location = $sale->location_id
-                ? Location::forCompany($sale->company_id)->find($sale->location_id)
-                : $this->locations->defaultLocation($sale->company_id);
 
             foreach ($sale->items as $item) {
                 if (! $item->product_id) {
@@ -75,10 +70,6 @@ class ConfirmSale
                         referenceId: $sale->id, note: "Sale {$sale->sale_no}", userId: $userId,
                     );
                     $product->save();
-                }
-
-                if ($location) {
-                    $this->locations->adjust($sale->company_id, $location->id, $product->id, 'out', (float) $item->qty);
                 }
 
                 $this->supervisorCommission->accrue(
@@ -120,7 +111,13 @@ class ConfirmSale
 
             $sale->update(['status' => 'confirmed', 'confirmed_at' => now()]);
 
-            return $sale->refresh()->load(['items', 'customer:id,name,type,loyalty_points']);
+            $this->activity->log(
+                $sale->company_id, $userId, 'confirm', 'sales', 'sale', $sale->id,
+                "Sale {$sale->sale_no} confirmed",
+                ['grand_total' => (float) $sale->grand_total, 'created_by' => $sale->created_by],
+            );
+
+            return $sale->refresh()->load(['items', 'customer:id,name,type,loyalty_points', 'createdBy:id,name']);
         });
     }
 }

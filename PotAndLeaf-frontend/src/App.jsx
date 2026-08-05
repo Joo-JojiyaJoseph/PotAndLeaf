@@ -20,6 +20,7 @@ import BulkSplitForm from './pages/bulkSplits/BulkSplitForm';
 import BulkSplitDetail from './pages/bulkSplits/BulkSplitDetail';
 import CustomersList from './pages/customers/CustomersList';
 import CustomerDetail from './pages/customers/CustomerDetail';
+import LoyaltyPage from './pages/customers/LoyaltyPage';
 import SalesList from './pages/sales/SalesList';
 import SaleForm from './pages/sales/SaleForm';
 import SaleDetail from './pages/sales/SaleDetail';
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="bulk-splits/:id" element={<BulkSplitDetail />} />
           <Route path="customers" element={<CustomersList />} />
           <Route path="customers/:id" element={<CustomerDetail />} />
+          <Route path="loyalty" element={<LoyaltyPage />} />
           <Route path="sales" element={<SalesList />} />
           <Route path="sales/new" element={<SaleForm />} />
           <Route path="sales/:id" element={<SaleDetail />} />

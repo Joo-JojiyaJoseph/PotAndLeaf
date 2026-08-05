@@ -3,13 +3,11 @@
 namespace App\Actions\SalesReturns;
 
 use App\Models\Customer;
-use App\Models\Location;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SalesReturn;
 use App\Repositories\Contracts\SalesReturnRepositoryInterface;
 use App\Services\InventoryService;
-use App\Services\LocationStockService;
 use App\Services\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +21,6 @@ class ConfirmSalesReturn
     public function __construct(
         private readonly SalesReturnRepositoryInterface $returns,
         private readonly InventoryService $inventory,
-        private readonly LocationStockService $locations,
         private readonly LoyaltyService $loyalty,
     ) {}
 
@@ -36,10 +33,6 @@ class ConfirmSalesReturn
         return DB::transaction(function () use ($return, $userId) {
             $return->loadMissing(['items', 'sale']);
             $this->guardReturnable($return);
-
-            $location = $return->location_id
-                ? Location::forCompany($return->company_id)->find($return->location_id)
-                : $this->locations->defaultLocation($return->company_id);
 
             foreach ($return->items as $item) {
                 if (! $item->product_id) {
@@ -62,10 +55,6 @@ class ConfirmSalesReturn
                     userId: $userId,
                 );
                 $product->save();
-
-                if ($location) {
-                    $this->locations->adjust($return->company_id, $location->id, $product->id, 'in', (float) $item->qty);
-                }
             }
 
             if ($return->customer_id) {
@@ -77,7 +66,6 @@ class ConfirmSalesReturn
                         $customer->save();
                     }
 
-                    // Reverse earned points proportional to returned bill value.
                     $points = $this->loyalty->pointsEarned($return->company_id, (float) $return->grand_total);
                     if ($points > 0) {
                         $customer->refresh();
