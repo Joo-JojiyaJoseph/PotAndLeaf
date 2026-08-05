@@ -5,6 +5,7 @@ import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
+import { mediaUrl } from '../../components/media';
 import { formatCurrency } from '../../lib/format';
 
 const tone = { active: 'active', inactive: 'inactive', blocked: 'blocked' };
@@ -49,7 +50,7 @@ export default function SupplierDetail() {
 
       {s.photo && (
         <div className="size-24 overflow-hidden rounded-2xl border border-line">
-          <img src={s.photo} alt="" className="size-full object-cover" />
+          <img src={mediaUrl(s.photo)} alt="" className="size-full object-cover" />
         </div>
       )}
 

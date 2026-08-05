@@ -14,13 +14,13 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,         // admin user + company access
             AdminRoleSeeder::class,    // Administrator role per company, assigned to admin
             StandardRolesSeeder::class, // branch roles: Manager, Cashier, Godown, Supervisor, Salesman
-            BranchUserSeeder::class,    // sample per-company logins (manager/cashier)
+            // BranchUserSeeder::class,    // sample per-company logins (manager/cashier)
             LookupSeeder::class,
-            LocationSeeder::class,     // default godown + shop per company
-            SupplierSeeder::class,     // sample suppliers per company
-            ProductSeeder::class,      // sample products per company
-            CustomerSeeder::class,
-            DemoSeeder::class,         // live demo activity (purchases, sales, payments) — must run last
+            // LocationSeeder::class,     // default godown + shop per company
+            // SupplierSeeder::class,     // sample suppliers per company
+            // ProductSeeder::class,      // sample products per company
+            // CustomerSeeder::class,
+            // DemoSeeder::class,         // live demo activity (purchases, sales, payments) — must run last
         ]);
     }
 }

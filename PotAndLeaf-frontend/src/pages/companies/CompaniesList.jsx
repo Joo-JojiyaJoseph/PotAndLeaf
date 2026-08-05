@@ -9,7 +9,7 @@ import {
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
-import { ImageUpload } from '../../components/media';
+import { ImageUpload, mediaUrl } from '../../components/media';
 import StatusToggle from '../../components/StatusToggle';
 import { useToast } from '../../lib/toast';
 
@@ -114,7 +114,7 @@ export default function CompaniesList() {
               <div className="flex items-start gap-3">
                 <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-leaf-soft">
                   {(c.logo || c.photo)
-                    ? <img src={c.logo || c.photo} alt="" className="size-full object-cover" />
+                    ? <img src={mediaUrl(c.logo || c.photo)} alt="" className="size-full object-cover" />
                     : <BuildingOffice2Icon className="size-7 text-leaf/50" />}
                 </div>
                 <div className="min-w-0 flex-1">

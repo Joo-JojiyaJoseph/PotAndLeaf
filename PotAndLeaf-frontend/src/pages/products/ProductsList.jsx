@@ -17,6 +17,7 @@ import { useConfirm } from '../../lib/confirm';
 import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
 import Pagination from '../../components/Pagination';
 import StatusToggle from '../../components/StatusToggle';
+import { mediaUrl } from '../../components/media';
 import { formatCurrency } from '../../lib/format';
 
 export default function ProductsList() {
@@ -152,7 +153,7 @@ export default function ProductsList() {
                 <div className="flex items-start gap-3">
                   <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-leaf-soft">
                     {thumb
-                      ? <img src={thumb} alt="" className="size-full object-cover" />
+                      ? <img src={mediaUrl(thumb)} alt="" className="size-full object-cover" />
                       : <PhotoIcon className="size-7 text-leaf/50" />}
                   </div>
                   <div className="min-w-0 flex-1">

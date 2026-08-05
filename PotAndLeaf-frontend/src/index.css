@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');
 @import "tailwindcss";
 
 /* Design tokens — Pot & Leaf "modern" theme: cool green-grey canvas, soft
@@ -81,3 +82,6 @@ html.dark {
 
 html, body, #root { transition: background-color 0.2s ease, color 0.2s ease; }
 button, a, input, select, textarea { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+
+/* Handwritten accent — used once on the login hero tagline. */
+.login-script { font-family: 'Caveat', 'Inter', cursive; font-weight: 700; letter-spacing: 0.5px; }

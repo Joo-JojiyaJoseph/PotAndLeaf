@@ -4,12 +4,25 @@ import api from '../lib/api';
 import { useToast } from '../lib/toast';
 import { Spinner } from './ui';
 
-/** Resolve stored media paths to browser-loadable URLs. */
+/** Resolve stored media paths to browser-loadable URLs.
+ *  The API returns absolute URLs built from the backend's APP_URL
+ *  (e.g. http://potandleaf.test/storage/uploads/x.jpg), but that host isn't
+ *  necessarily where the SPA proxies requests, so an absolute <img src>
+ *  bypasses the dev proxy and fails to load. We reduce our own uploads to a
+ *  same-origin /storage path so they flow through the proxy in dev and work
+ *  behind a single domain in production. External URLs are left untouched. */
 export function mediaUrl(value) {
   if (!value) return null;
-  if (value.startsWith('http') || value.startsWith('data:') || value.startsWith('blob:')) return value;
-  if (value.startsWith('/')) return `${window.location.origin}${value}`;
-  return `${window.location.origin}/storage/${value.replace(/^\/+/, '')}`;
+  if (value.startsWith('data:') || value.startsWith('blob:')) return value;
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const { pathname, search } = new URL(value);
+      if (pathname.startsWith('/storage/')) return pathname + search;
+    } catch { /* not a parseable URL — fall through */ }
+    return value; // genuinely external URL — leave as-is
+  }
+  if (value.startsWith('/')) return value;
+  return `/storage/${value.replace(/^\/+/, '')}`;
 }
 
 async function uploadFile(file) {

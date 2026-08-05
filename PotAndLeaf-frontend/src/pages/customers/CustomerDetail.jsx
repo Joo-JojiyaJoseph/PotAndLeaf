@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
+import { mediaUrl } from '../../components/media';
 import { formatCurrency } from '../../lib/format';
 
 const typeTone = { retail: 'info', wholesale: 'active', dealer: 'pending' };
@@ -56,7 +57,7 @@ export default function CustomerDetail() {
 
       {c.photo && (
         <div className="size-24 overflow-hidden rounded-2xl border border-line">
-          <img src={c.photo} alt="" className="size-full object-cover" />
+          <img src={mediaUrl(c.photo)} alt="" className="size-full object-cover" />
         </div>
       )}
 
