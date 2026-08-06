@@ -9,18 +9,19 @@ use App\Models\BulkSplit;
 use App\Models\Product;
 use App\Services\BulkSplitService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BulkSplitController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly BulkSplitService $splits) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'bulk_splits.view');
 
         return $this->ok(BulkSplitResource::collection($this->splits->list($company->id, $request->only(['search', 'status', 'per_page']))));

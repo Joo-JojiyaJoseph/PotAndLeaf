@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../lib/confirm';
 import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
@@ -22,6 +23,7 @@ import { formatCurrency } from '../../lib/format';
 
 export default function ProductsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -34,15 +36,16 @@ export default function ProductsList() {
   const [lowOnly, setLowOnly] = useState(false);
 
   const { data: formData } = useQuery({
-    queryKey: ['products-form-data', activeCompany?.id],
-    queryFn: () => api.get('/products/form-data').then((r) => r.data.data),
+    queryKey: ['products-form-data', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/products/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['products', activeCompany?.id, debounced, page, status, categoryId, lowOnly],
+    queryKey: ['products', activeCompany?.id, filterCompanyId, debounced, page, status, categoryId, lowOnly],
     queryFn: () => api.get('/products', {
       params: {
+        ...companyParams,
         search: debounced,
         per_page: 24,
         page,
@@ -89,14 +92,17 @@ export default function ProductsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Products</h1>
-          <p className="text-sm text-muted">Product master with live stock levels and barcodes.</p>
+          <p className="text-sm text-muted">Product master with live stock levels and barcodes{companyHint}.</p>
         </div>
-        {can('products.create') && (
-          <div className="flex items-center gap-2">
-            <Link to="/products/labels"><Button variant="outline" size="sm"><QrCodeIcon className="size-4" /> Labels</Button></Link>
-            <Link to="/products/new"><Button size="sm"><PlusIcon className="size-4" /> New product</Button></Link>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('products.create') && (
+            <>
+              <Link to="/products/labels"><Button variant="outline" size="sm"><QrCodeIcon className="size-4" /> Labels</Button></Link>
+              <Link to="/products/new"><Button size="sm"><PlusIcon className="size-4" /> New product</Button></Link>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

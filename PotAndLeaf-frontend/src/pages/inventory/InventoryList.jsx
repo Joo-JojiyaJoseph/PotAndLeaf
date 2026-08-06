@@ -1,65 +1,37 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import InventoryLedgerTab from './InventoryLedgerTab';
 import { ExclamationTriangleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Badge, Button, Card, Input, Modal, Spinner, StatCard } from '../../components/ui';
+import CompanyFilter, { companyFilterParam, filteredCompanyLabel } from '../../components/CompanyFilter';
+import { Badge, Button, Card, Input, Spinner, StatCard } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
 const TABS = [
   { value: 'levels', label: 'Stock levels' },
+  { value: 'ledger', label: 'Stock ledger' },
   { value: 'valuation', label: 'Valuation' },
   { value: 'movement', label: 'Fast / slow / dead' },
 ];
 const classTone = { fast: 'active', slow: 'warning', dead: 'blocked' };
 
-function LedgerModal({ product, onClose }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['ledger', product?.id],
-    queryFn: () => api.get('/inventory/ledger', { params: { product_id: product.id } }).then((r) => r.data),
-    enabled: Boolean(product),
-  });
-  const rows = data?.data ?? [];
-  return (
-    <Modal open={Boolean(product)} onClose={onClose} title={product ? `Ledger — ${product.name}` : ''}>
-      {isLoading ? <div className="flex justify-center py-10"><Spinner className="size-6" /></div>
-        : rows.length === 0 ? <p className="py-8 text-center text-sm text-muted">No movements yet.</p>
-        : (
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-line text-left text-faint">
-              <th className="microlabel py-2 pr-2 font-semibold">Date</th>
-              <th className="microlabel py-2 px-2 font-semibold">Movement</th>
-              <th className="microlabel py-2 px-2 text-right font-semibold">Qty</th>
-              <th className="microlabel py-2 pl-2 text-right font-semibold">Balance</th>
-            </tr></thead>
-            <tbody>
-              {rows.map((e) => (
-                <tr key={e.id} className="border-b border-line/60 last:border-0">
-                  <td className="py-2 pr-2 font-mono text-xs text-muted">{formatDate(e.occurred_at)}</td>
-                  <td className="py-2 px-2"><span className={e.direction === 'in' ? 'text-leaf' : 'text-danger'}>{e.direction === 'in' ? 'In' : 'Out'}</span><span className="ml-1 text-xs text-muted">{e.note}</span></td>
-                  <td className="tnum py-2 px-2 text-right">{e.qty}</td>
-                  <td className="tnum py-2 pl-2 text-right font-medium">{e.balance_after}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-    </Modal>
-  );
-}
-
-function LevelsTab({ onLedger }) {
+function LevelsTab({ onViewLedger, filterCompanyId }) {
   const { activeCompany } = useAuth();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
+  const companyParams = companyFilterParam(filterCompanyId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['inventory', 'stock', activeCompany?.id, debounced, lowOnly],
-    queryFn: () => api.get('/inventory/stock', { params: { search: debounced, low_only: lowOnly ? 1 : 0 } }).then((r) => r.data),
+    queryKey: ['inventory', 'stock', activeCompany?.id, filterCompanyId, debounced, lowOnly],
+    queryFn: () => api.get('/inventory/stock', { params: { ...companyParams, search: debounced, low_only: lowOnly ? 1 : 0 } }).then((r) => r.data),
     keepPreviousData: true,
   });
-  const { data: alerts } = useQuery({ queryKey: ['inventory', 'alerts', activeCompany?.id], queryFn: () => api.get('/inventory/alerts').then((r) => r.data.data) });
+  const { data: alerts } = useQuery({
+    queryKey: ['inventory', 'alerts', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/inventory/alerts', { params: companyParams }).then((r) => r.data.data),
+  });
   const rows = data?.data ?? [];
   const alertCount = alerts?.length ?? 0;
 
@@ -105,7 +77,9 @@ function LevelsTab({ onLedger }) {
                     <td className="tnum px-4 py-2.5 text-right text-muted">{p.reorder_level}</td>
                     <td className="tnum px-4 py-2.5 text-right text-muted">{p.cost_price != null ? formatCurrency(p.cost_price) : '—'}</td>
                     <td className="px-4 py-2.5">{p.is_low_stock ? <Badge tone="warning">Low</Badge> : <Badge tone="active">OK</Badge>}</td>
-                    <td className="px-4 py-2.5 text-right"><Button variant="outline" size="sm" onClick={() => onLedger(p)}>Ledger</Button></td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Button variant="outline" size="sm" onClick={() => onViewLedger(p.id)}>View ledger</Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -116,9 +90,13 @@ function LevelsTab({ onLedger }) {
   );
 }
 
-function ValuationTab() {
+function ValuationTab({ filterCompanyId }) {
   const { activeCompany } = useAuth();
-  const { data, isLoading } = useQuery({ queryKey: ['inventory', 'valuation', activeCompany?.id], queryFn: () => api.get('/inventory/valuation').then((r) => r.data.data) });
+  const companyParams = companyFilterParam(filterCompanyId);
+  const { data, isLoading } = useQuery({
+    queryKey: ['inventory', 'valuation', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/inventory/valuation', { params: companyParams }).then((r) => r.data.data),
+  });
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="size-6" /></div>;
   const rows = data?.items ?? [];
   const t = data?.totals ?? {};
@@ -155,10 +133,14 @@ function ValuationTab() {
   );
 }
 
-function MovementTab() {
+function MovementTab({ filterCompanyId }) {
   const { activeCompany } = useAuth();
   const [days, setDays] = useState(30);
-  const { data, isLoading } = useQuery({ queryKey: ['inventory', 'movement', activeCompany?.id, days], queryFn: () => api.get('/inventory/movement', { params: { days } }).then((r) => r.data.data) });
+  const companyParams = companyFilterParam(filterCompanyId);
+  const { data, isLoading } = useQuery({
+    queryKey: ['inventory', 'movement', activeCompany?.id, filterCompanyId, days],
+    queryFn: () => api.get('/inventory/movement', { params: { ...companyParams, days } }).then((r) => r.data.data),
+  });
   const rows = data?.items ?? [];
   const s = data?.summary ?? {};
   return (
@@ -207,27 +189,46 @@ function MovementTab() {
 }
 
 export default function InventoryList() {
+  const { activeCompany, companies, isSuperAdmin } = useAuth();
   const [tab, setTab] = useState('levels');
-  const [ledgerProduct, setLedgerProduct] = useState(null);
+  const [ledgerProductId, setLedgerProductId] = useState('');
+  const [filterCompanyId, setFilterCompanyId] = useState('');
+
+  function openLedger(productId) {
+    setLedgerProductId(productId);
+    setTab('ledger');
+  }
+
+  useEffect(() => {
+    if (tab !== 'ledger') setLedgerProductId('');
+  }, [tab]);
+
+  const viewingCompany = filteredCompanyLabel(companies, filterCompanyId, activeCompany);
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
-      <div>
-        <h1 className="text-lg font-semibold">Inventory</h1>
-        <p className="text-sm text-muted">Live stock, valuation, and movement analysis.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold">Inventory</h1>
+          <p className="text-sm text-muted">
+            Live stock, movement ledger, valuation, and analysis
+            {isSuperAdmin ? ` · ${viewingCompany}` : ''}.
+          </p>
+        </div>
+        <CompanyFilter value={filterCompanyId} onChange={setFilterCompanyId} />
       </div>
-      <div className="flex gap-1 border-b border-line">
+      <div className="flex gap-1 overflow-x-auto border-b border-line">
         {TABS.map((t) => (
           <button key={t.value} onClick={() => setTab(t.value)}
-            className={'border-b-2 px-3 py-2 text-sm transition-colors ' + (tab === t.value ? 'border-leaf font-medium text-leaf' : 'border-transparent text-muted hover:text-ink')}>
+            className={'shrink-0 border-b-2 px-3 py-2 text-sm transition-colors ' + (tab === t.value ? 'border-leaf font-medium text-leaf' : 'border-transparent text-muted hover:text-ink')}>
             {t.label}
           </button>
         ))}
       </div>
-      {tab === 'levels' && <LevelsTab onLedger={setLedgerProduct} />}
-      {tab === 'valuation' && <ValuationTab />}
-      {tab === 'movement' && <MovementTab />}
-      <LedgerModal product={ledgerProduct} onClose={() => setLedgerProduct(null)} />
+      {tab === 'levels' && <LevelsTab onViewLedger={openLedger} filterCompanyId={filterCompanyId} />}
+      {tab === 'ledger' && <InventoryLedgerTab key={`${ledgerProductId}-${filterCompanyId}`} initialProductId={ledgerProductId} filterCompanyId={filterCompanyId} />}
+      {tab === 'valuation' && <ValuationTab filterCompanyId={filterCompanyId} />}
+      {tab === 'movement' && <MovementTab filterCompanyId={filterCompanyId} />}
     </div>
   );
 }

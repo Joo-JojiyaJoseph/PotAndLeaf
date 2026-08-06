@@ -73,16 +73,45 @@ class InventoryService
             ->get(['id', 'sku', 'name', 'current_stock', 'reorder_level']);
     }
 
-    public function ledgerFor(int|string $companyId, ?string $productId = null, ?string $referenceType = null): LengthAwarePaginator
+    /** @param array<string,mixed> $filters */
+    public function ledgerFor(int|string $companyId, array $filters = []): LengthAwarePaginator
+    {
+        $perPage = min((int) ($filters['per_page'] ?? 25), 100);
+
+        return $this->ledgerQuery($companyId, $filters)
+            ->with('product:id,sku,name')
+            ->latest('occurred_at')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    /** Flat list for CSV export (capped). */
+    public function ledgerExportRows(int|string $companyId, array $filters = [], int $limit = 5000): \Illuminate\Support\Collection
+    {
+        return $this->ledgerQuery($companyId, $filters)
+            ->with('product:id,sku,name')
+            ->latest('occurred_at')
+            ->limit($limit)
+            ->get();
+    }
+
+    /** @param array<string,mixed> $filters */
+    private function ledgerQuery(int|string $companyId, array $filters)
     {
         return StockLedgerEntry::query()
             ->forCompany($companyId)
-            ->when(filled($productId), fn ($q) => $q->where('product_id', $productId))
-            ->when(filled($referenceType), fn ($q) => $q->where('reference_type', $referenceType))
-            ->with('product:id,sku,name')
-            ->latest('occurred_at')
-            ->paginate(30)
-            ->withQueryString();
+            ->when(filled($filters['product_id'] ?? null), fn ($q) => $q->where('product_id', $filters['product_id']))
+            ->when(filled($filters['reference_type'] ?? null), fn ($q) => $q->where('reference_type', $filters['reference_type']))
+            ->when(filled($filters['direction'] ?? null), fn ($q) => $q->where('direction', $filters['direction']))
+            ->when(filled($filters['from'] ?? null), fn ($q) => $q->whereDate('occurred_at', '>=', $filters['from']))
+            ->when(filled($filters['to'] ?? null), fn ($q) => $q->whereDate('occurred_at', '<=', $filters['to']))
+            ->when(filled($filters['search'] ?? null), function ($q) use ($filters) {
+                $term = '%'.$filters['search'].'%';
+                $q->where(function ($inner) use ($term) {
+                    $inner->where('note', 'like', $term)
+                        ->orWhereHas('product', fn ($p) => $p->where('name', 'like', $term)->orWhere('sku', 'like', $term));
+                });
+            });
     }
 
     /** Stock valuation: current_stock × cost_price per product, plus totals. */

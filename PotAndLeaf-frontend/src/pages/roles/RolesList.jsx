@@ -3,12 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 
 const permName = (p) => (typeof p === 'string' ? p : p.name);
 
 export default function RolesList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', description: '' });
@@ -17,14 +19,14 @@ export default function RolesList() {
   const [deleting, setDeleting] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['roles', activeCompany?.id],
-    queryFn: () => api.get('/roles').then((r) => r.data),
+    queryKey: ['roles', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/roles', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany),
   });
 
   const { data: formData } = useQuery({
-    queryKey: ['roles-form-data', activeCompany?.id],
-    queryFn: () => api.get('/roles/form-data').then((r) => r.data.data),
+    queryKey: ['roles-form-data', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/roles/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
 
@@ -69,9 +71,12 @@ export default function RolesList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Roles &amp; permissions</h1>
-          <p className="text-sm text-muted">Define what each role can do in {activeCompany?.name}.</p>
+          <p className="text-sm text-muted">Define what each role can do{companyHint}.</p>
         </div>
-        {can('roles.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New role</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('roles.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New role</Button>}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

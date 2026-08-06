@@ -9,6 +9,7 @@ use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
 use App\Services\SupplierService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,13 +19,13 @@ use Illuminate\Http\Request;
  */
 class SupplierController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly SupplierService $suppliers) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $request->attributes->get('company');
+        $company = $this->listCompany($request);
         $this->allow($request, 'suppliers.view');
 
         $filters = $request->only(['search', 'status', 'sort', 'dir', 'per_page']);

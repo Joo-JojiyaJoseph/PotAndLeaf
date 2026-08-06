@@ -110,6 +110,7 @@ export default function PurchaseDetail() {
                 <th className="microlabel px-3 py-2 text-right font-semibold">GST</th>
                 <th className="microlabel px-3 py-2 text-right font-semibold">Landed unit cost</th>
                 <th className="microlabel py-2 pl-3 text-right font-semibold">Total</th>
+                <th className="microlabel py-2 pl-3 text-right font-semibold"></th>
               </tr>
             </thead>
             <tbody>
@@ -123,6 +124,13 @@ export default function PurchaseDetail() {
                   <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency((it.cgst_amount ?? 0) + (it.sgst_amount ?? 0) + (it.igst_amount ?? 0))} <span className="text-xs">({it.gst_rate}%)</span></td>
                   <td className="tnum px-3 py-2 text-right text-muted">{formatCurrency(it.landed_unit_cost)}</td>
                   <td className="tnum py-2 pl-3 text-right font-medium">{formatCurrency(it.line_total)}</td>
+                  <td className="py-2 pl-3 text-right">
+                    {p.status === 'confirmed' && it.product_id && !it.sell_as && (
+                      <Button variant="outline" size="sm" onClick={() => navigate('/bulk-splits/new', { state: { sourceProductId: it.product_id, sourceQty: it.qty } })}>
+                        Split into units
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

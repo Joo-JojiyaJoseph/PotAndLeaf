@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
@@ -15,9 +15,10 @@ const selectCls = 'h-9 w-full min-w-[160px] rounded-xl border border-line bg-sur
 
 export default function BulkSplitForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeCompany } = useAuth();
-  const [sourceId, setSourceId] = useState('');
-  const [sourceQty, setSourceQty] = useState('');
+  const [sourceId, setSourceId] = useState(location.state?.sourceProductId ?? '');
+  const [sourceQty, setSourceQty] = useState(location.state?.sourceQty != null ? String(location.state.sourceQty) : '');
   const [splitDate, setSplitDate] = useState(today());
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState([emptyLine()]);

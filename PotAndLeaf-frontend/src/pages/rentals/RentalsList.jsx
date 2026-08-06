@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatDate } from '../../lib/format';
 
@@ -15,12 +16,13 @@ const tone = { draft: 'inactive', active: 'active', returned: 'approved', cancel
 
 export default function RentalsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['rentals', activeCompany?.id, status],
-    queryFn: () => api.get('/rentals', { params: { status } }).then((r) => r.data),
+    queryKey: ['rentals', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/rentals', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -31,9 +33,12 @@ export default function RentalsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Plant rentals</h1>
-          <p className="text-sm text-muted">Rent plants out on agreements. Activating issues stock; returns bring it back.</p>
+          <p className="text-sm text-muted">Rent plants out on agreements. Activating issues stock; returns bring it back{companyHint}.</p>
         </div>
-        {can('rental.create') && <Link to="/rentals/new"><Button size="sm"><PlusIcon className="size-4" /> New rental</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('rental.create') && <Link to="/rentals/new"><Button size="sm"><PlusIcon className="size-4" /> New rental</Button></Link>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

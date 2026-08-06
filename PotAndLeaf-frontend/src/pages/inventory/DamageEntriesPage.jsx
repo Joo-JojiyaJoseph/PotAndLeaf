@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import CompanyFilter, { companyFilterParam, filteredCompanyLabel } from '../../components/CompanyFilter';
 import { useToast } from '../../lib/toast';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { ImageUpload } from '../../components/media';
@@ -111,22 +112,24 @@ function DamageFormModal({ open, onClose }) {
 }
 
 export default function DamageEntriesPage() {
-  const { activeCompany, can } = useAuth();
+  const { activeCompany, can, companies, isSuperAdmin } = useAuth();
   const [modal, setModal] = useState(false);
   const [page, setPage] = useState(1);
   const [movementFilter, setMovementFilter] = useState('');
+  const [filterCompanyId, setFilterCompanyId] = useState('');
+  const companyParams = companyFilterParam(filterCompanyId);
 
   const listQ = useQuery({
-    queryKey: ['damage-entries', activeCompany?.id, page],
-    queryFn: () => api.get('/damage-entries', { params: { per_page: 25, page } }).then((r) => r.data),
+    queryKey: ['damage-entries', activeCompany?.id, filterCompanyId, page],
+    queryFn: () => api.get('/damage-entries', { params: { ...companyParams, per_page: 25, page } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
 
   const ledgerQ = useQuery({
-    queryKey: ['inventory', 'ledger', 'damage', activeCompany?.id, movementFilter],
+    queryKey: ['inventory', 'ledger', 'damage', activeCompany?.id, filterCompanyId, movementFilter],
     queryFn: () => api.get('/inventory/ledger', {
-      params: { reference_type: movementFilter || 'damage', per_page: 25 },
+      params: { ...companyParams, reference_type: movementFilter || 'damage', per_page: 25 },
     }).then((r) => r.data),
     enabled: Boolean(activeCompany) && movementFilter === 'damage',
   });
@@ -139,13 +142,18 @@ export default function DamageEntriesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Damage Entry</h1>
-          <p className="text-sm text-muted">Write off damaged stock — posts a Damage movement to the ledger.</p>
+          <p className="text-sm text-muted">
+            Write off damaged stock{isSuperAdmin ? ` · ${filteredCompanyLabel(companies, filterCompanyId, activeCompany)}` : ''} — posts a Damage movement to the ledger.
+          </p>
         </div>
-        {can('damage.create') && (
-          <Button size="sm" onClick={() => setModal(true)}>
-            <PlusIcon className="size-4" /> Record damage
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <CompanyFilter value={filterCompanyId} onChange={(id) => { setFilterCompanyId(id); setPage(1); }} />
+          {can('damage.create') && (
+            <Button size="sm" onClick={() => setModal(true)}>
+              <PlusIcon className="size-4" /> Record damage
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

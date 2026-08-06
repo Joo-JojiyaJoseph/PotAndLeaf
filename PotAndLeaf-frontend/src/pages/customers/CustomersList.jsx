@@ -6,6 +6,7 @@ import { formatCurrency } from '../../lib/format';
 import { mediaUrl } from '../../components/media';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { ImageUpload } from '../../components/media';
 import { useToast } from '../../lib/toast';
@@ -20,6 +21,7 @@ const TYPES = [{ v: '', l: 'All types' }, { v: 'retail', l: 'Retail' }, { v: 'wh
 
 export default function CustomersList() {
   const { activeCompany, can, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -34,8 +36,8 @@ export default function CustomersList() {
   const [pickedCompany, setPickedCompany] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['customers', activeCompany?.id, debounced, type, page],
-    queryFn: () => api.get('/customers', { params: { search: debounced, type, page, per_page: 25 } }).then((r) => r.data),
+    queryKey: ['customers', activeCompany?.id, filterCompanyId, debounced, type, page],
+    queryFn: () => api.get('/customers', { params: { ...companyParams, search: debounced, type, page, per_page: 25 } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -73,9 +75,12 @@ export default function CustomersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Customers</h1>
-          <p className="text-sm text-muted">Customer master — types, GST, credit terms and balances.</p>
+          <p className="text-sm text-muted">Customer master — types, GST, credit terms and balances{companyHint}.</p>
         </div>
-        {can('customers.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New customer</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('customers.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New customer</Button>}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

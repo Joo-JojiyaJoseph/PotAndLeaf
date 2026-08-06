@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 
 const empty = { name: '', code: '', type: 'godown', is_default: false, is_active: true };
@@ -10,6 +11,7 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 
 export default function LocationsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
@@ -17,8 +19,8 @@ export default function LocationsList() {
   const [deleting, setDeleting] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['locations', activeCompany?.id],
-    queryFn: () => api.get('/locations').then((r) => r.data),
+    queryKey: ['locations', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/locations', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany),
   });
   const saveM = useMutation({
@@ -42,9 +44,12 @@ export default function LocationsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Locations</h1>
-          <p className="text-sm text-muted">Godowns and shops that hold stock for {activeCompany?.name}.</p>
+          <p className="text-sm text-muted">Godowns and shops that hold stock{companyHint}.</p>
         </div>
-        {can('locations.manage') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New location</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('locations.manage') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> New location</Button>}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

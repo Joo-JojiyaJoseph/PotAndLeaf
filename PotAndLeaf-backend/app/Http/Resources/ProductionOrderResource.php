@@ -31,6 +31,11 @@ class ProductionOrderResource extends JsonResource
             'status'           => $this->status,
             'notes'            => $this->notes,
             'completed_at'     => optional($this->completed_at)->toIso8601String(),
+            'barcodes'         => $this->whenLoaded('batches', fn () => $this->batches->map(fn ($b) => [
+                'id'      => $b->id,
+                'barcode' => $b->barcode,
+                'qty'     => (float) $b->qty,
+            ])->values()),
             'items'            => $this->whenLoaded('items', fn () => $this->items->map(fn ($i) => [
                 'id' => $i->id, 'product_name' => $i->product_name,
                 'qty' => (float) $i->qty, 'unit_cost' => (float) $i->unit_cost, 'line_cost' => (float) $i->line_cost,

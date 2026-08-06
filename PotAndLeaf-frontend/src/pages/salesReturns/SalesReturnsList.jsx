@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -17,13 +18,14 @@ const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked
 
 export default function SalesReturnsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['sales-returns', activeCompany?.id, status],
-    queryFn: () => api.get('/sales-returns', { params: { status } }).then((r) => r.data),
+    queryKey: ['sales-returns', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/sales-returns', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -44,13 +46,16 @@ export default function SalesReturnsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Sales returns</h1>
-          <p className="text-sm text-muted">Credit notes to customers. Confirming restores stock and reduces receivables.</p>
+          <p className="text-sm text-muted">Credit notes to customers. Confirming restores stock and reduces receivables{companyHint}.</p>
         </div>
-        {can('sales_returns.create') && (
-          <Link to="/sales-returns/new">
-            <Button size="sm"><PlusIcon className="size-4" /> New return</Button>
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('sales_returns.create') && (
+            <Link to="/sales-returns/new">
+              <Button size="sm"><PlusIcon className="size-4" /> New return</Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

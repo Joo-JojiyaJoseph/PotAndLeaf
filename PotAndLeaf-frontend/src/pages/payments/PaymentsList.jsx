@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -11,20 +12,20 @@ const payStatusTone = { paid: 'active', partial: 'warning', unpaid: 'blocked' };
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 const today = () => new Date().toISOString().slice(0, 10);
 
-function RecordPaymentModal({ open, onClose, prefill }) {
+function RecordPaymentModal({ open, onClose, prefill, filterCompanyId, companyParams }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ supplier_id: '', purchase_id: '', amount: '', mode: 'cash', payment_date: today(), reference: '', notes: '' });
   const [errors, setErrors] = useState({});
   const [applied, setApplied] = useState(null);
 
   const { data: formData } = useQuery({
-    queryKey: ['payment-form-data'],
-    queryFn: () => api.get('/supplier-payments/form-data').then((r) => r.data.data),
+    queryKey: ['payment-form-data', filterCompanyId],
+    queryFn: () => api.get('/supplier-payments/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: open,
   });
   const { data: payables } = useQuery({
-    queryKey: ['payables', 'modal', form.supplier_id],
-    queryFn: () => api.get('/supplier-payments/payables', { params: { supplier_id: form.supplier_id } }).then((r) => r.data.data.payables),
+    queryKey: ['payables', 'modal', filterCompanyId, form.supplier_id],
+    queryFn: () => api.get('/supplier-payments/payables', { params: { ...companyParams, supplier_id: form.supplier_id } }).then((r) => r.data.data.payables),
     enabled: open && Boolean(form.supplier_id),
   });
 
@@ -101,19 +102,20 @@ function RecordPaymentModal({ open, onClose, prefill }) {
 
 export default function PaymentsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('payables');
   const [modal, setModal] = useState(false);
   const [prefill, setPrefill] = useState(null);
 
   const payablesQ = useQuery({
-    queryKey: ['payables', activeCompany?.id, 'all'],
-    queryFn: () => api.get('/supplier-payments/payables').then((r) => r.data.data.payables),
+    queryKey: ['payables', activeCompany?.id, filterCompanyId, 'all'],
+    queryFn: () => api.get('/supplier-payments/payables', { params: companyParams }).then((r) => r.data.data.payables),
     enabled: Boolean(activeCompany) && tab === 'payables',
   });
   const historyQ = useQuery({
-    queryKey: ['supplier-payments', activeCompany?.id],
-    queryFn: () => api.get('/supplier-payments').then((r) => r.data),
+    queryKey: ['supplier-payments', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/supplier-payments', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'history',
   });
   const voidM = useMutation({
@@ -130,9 +132,12 @@ export default function PaymentsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Supplier payments</h1>
-          <p className="text-sm text-muted">Track what's owed per GRN and record payments against suppliers.</p>
+          <p className="text-sm text-muted">Track what's owed per GRN and record payments against suppliers{companyHint}.</p>
         </div>
-        {can('payments.create') && <Button size="sm" onClick={() => openRecord(null)}><PlusIcon className="size-4" /> Record payment</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('payments.create') && <Button size="sm" onClick={() => openRecord(null)}><PlusIcon className="size-4" /> Record payment</Button>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">
@@ -214,7 +219,7 @@ export default function PaymentsList() {
         </Card>
       )}
 
-      <RecordPaymentModal open={modal} onClose={() => { setModal(false); setPrefill(null); }} prefill={prefill} />
+      <RecordPaymentModal open={modal} onClose={() => { setModal(false); setPrefill(null); }} prefill={prefill} filterCompanyId={filterCompanyId} companyParams={companyParams} />
     </div>
   );
 }

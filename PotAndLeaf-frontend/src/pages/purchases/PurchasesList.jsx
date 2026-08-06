@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import CompanyFilter, { companyFilterParam, filteredCompanyLabel } from '../../components/CompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -17,14 +18,16 @@ const STATUS_TABS = [
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
 export default function PurchasesList() {
-  const { activeCompany, can } = useAuth();
+  const { activeCompany, can, companies, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
+  const [filterCompanyId, setFilterCompanyId] = useState('');
+  const companyParams = companyFilterParam(filterCompanyId);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['purchases', activeCompany?.id, status],
-    queryFn: () => api.get('/purchases', { params: { status } }).then((r) => r.data),
+    queryKey: ['purchases', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/purchases', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -44,15 +47,20 @@ export default function PurchasesList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Purchases</h1>
-          <p className="text-sm text-muted">GST purchase entries. Confirming a draft posts stock to the ledger.</p>
+          <p className="text-sm text-muted">
+            GST purchase entries{isSuperAdmin ? ` · ${filteredCompanyLabel(companies, filterCompanyId, activeCompany)}` : ''}. Confirming a draft posts stock to the ledger.
+          </p>
         </div>
-        {can('purchases.create') && (
-          <Link to="/purchases/new">
-            <Button size="sm">
-              <PlusIcon className="size-4" /> New purchase
-            </Button>
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <CompanyFilter value={filterCompanyId} onChange={setFilterCompanyId} />
+          {can('purchases.create') && (
+            <Link to="/purchases/new">
+              <Button size="sm">
+                <PlusIcon className="size-4" /> New purchase
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

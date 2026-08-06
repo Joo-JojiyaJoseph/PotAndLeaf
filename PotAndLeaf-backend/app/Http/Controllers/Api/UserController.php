@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use App\Support\ProtectedRecords;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,11 +23,11 @@ use Illuminate\Support\Facades\Hash;
  */
 class UserController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'users.view');
 
         $users = User::query()
@@ -43,7 +44,7 @@ class UserController extends Controller
     /** Roles available to assign in this company. */
     public function formData(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'users.view');
 
         $roles = Role::forCompany($company->id)->orderBy('name')->get(['id', 'name']);

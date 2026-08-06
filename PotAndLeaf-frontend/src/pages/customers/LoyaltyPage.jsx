@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import Pagination from '../../components/Pagination';
 
@@ -11,12 +12,13 @@ const ledgerTone = { earn: 'active', redeem: 'pending', reverse: 'blocked' };
 
 export default function LoyaltyPage() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['loyalty', activeCompany?.id, page],
-    queryFn: () => api.get('/loyalty', { params: { page, per_page: 25 } }).then((r) => r.data.data),
+    queryKey: ['loyalty', activeCompany?.id, filterCompanyId, page],
+    queryFn: () => api.get('/loyalty', { params: { ...companyParams, page, per_page: 25 } }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -33,11 +35,14 @@ export default function LoyaltyPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Loyalty points</h1>
-          <p className="text-sm text-muted">Customer balances, earn/redeem rules and recent activity for {activeCompany?.name}.</p>
+          <p className="text-sm text-muted">Customer balances, earn/redeem rules and recent activity{companyHint}.</p>
         </div>
-        {can('settings.update') && (
-          <Link to="/settings"><Button variant="outline" size="sm"><SparklesIcon className="size-4" /> Loyalty settings</Button></Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('settings.update') && (
+            <Link to="/settings"><Button variant="outline" size="sm"><SparklesIcon className="size-4" /> Loyalty settings</Button></Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

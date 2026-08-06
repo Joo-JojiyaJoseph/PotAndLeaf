@@ -11,18 +11,19 @@ use App\Models\CommissionPayout;
 use App\Models\User;
 use App\Services\CommissionService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CommissionController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly CommissionService $commission) {}
 
     public function formData(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'commission.view');
 
         $staff = User::query()
@@ -36,7 +37,7 @@ class CommissionController extends Controller
 
     public function rules(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'commission.view');
 
         return $this->ok(CommissionRuleResource::collection($this->commission->rules($company->id)));
@@ -52,7 +53,7 @@ class CommissionController extends Controller
 
     public function compute(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'commission.view');
         $validated = $request->validate([
             'user_id' => ['required', 'integer'],
@@ -64,7 +65,7 @@ class CommissionController extends Controller
 
     public function supervisorEntries(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'commission.view');
 
         $entries = $this->commission->supervisorEntries($company->id, $request->only(['user_id', 'from', 'to', 'per_page']));
@@ -85,7 +86,7 @@ class CommissionController extends Controller
 
     public function payouts(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'commission.view');
 
         return $this->ok(CommissionPayoutResource::collection($this->commission->payouts($company->id)));

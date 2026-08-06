@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import useCompanyFilter from '../hooks/useCompanyFilter';
 import { Card, Spinner } from '../components/ui';
 import { formatCurrency, formatDate } from '../lib/format';
 
@@ -33,21 +34,22 @@ function StatTile({ label, value, sub, gradient }) {
 
 export default function Dashboard() {
   const { activeCompany } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const range = { from: daysAgo(29), to: iso(new Date()) };
 
   const dashQ = useQuery({
-    queryKey: ['dashboard', activeCompany?.id],
-    queryFn: () => api.get('/dashboard').then((r) => r.data.data),
+    queryKey: ['dashboard', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/dashboard', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
   const repQ = useQuery({
-    queryKey: ['dashboard-reports', activeCompany?.id],
-    queryFn: () => api.get('/reports/dashboard', { params: range }).then((r) => r.data.data),
+    queryKey: ['dashboard-reports', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/reports/dashboard', { params: { ...companyParams, ...range } }).then((r) => r.data.data),
     enabled: Boolean(activeCompany), retry: false,
   });
   const salesQ = useQuery({
-    queryKey: ['dashboard-sales', activeCompany?.id],
-    queryFn: () => api.get('/sales', { params: { per_page: 6 } }).then((r) => r.data.data),
+    queryKey: ['dashboard-sales', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/sales', { params: { ...companyParams, per_page: 6 } }).then((r) => r.data.data),
     enabled: Boolean(activeCompany), retry: false,
   });
 
@@ -62,11 +64,14 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Overview</h1>
-          <p className="mt-0.5 text-sm text-muted">{activeCompany ? activeCompany.name : 'Select a company'} · last 30 days</p>
+          <p className="mt-0.5 text-sm text-muted">{activeCompany ? activeCompany.name : 'Select a company'} · last 30 days{companyHint}</p>
         </div>
-        <Link to="/reports" className="inline-flex items-center gap-1.5 rounded-full bg-leaf px-4 py-2 text-sm font-medium text-white shadow-soft transition-colors hover:bg-leaf-hover">
-          View full reports <ArrowRightIcon className="size-4" />
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          <Link to="/reports" className="inline-flex items-center gap-1.5 rounded-full bg-leaf px-4 py-2 text-sm font-medium text-white shadow-soft transition-colors hover:bg-leaf-hover">
+            View full reports <ArrowRightIcon className="size-4" />
+          </Link>
+        </div>
       </div>
 
       {dashQ.isLoading ? (

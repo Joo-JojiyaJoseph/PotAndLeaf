@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
+import { downloadCsv } from '../../lib/csv';
 
 const TABS = [{ value: 'orders', label: 'Orders' }, { value: 'boms', label: 'Bills of materials' }];
 const statusTone = { draft: 'inactive', completed: 'active', cancelled: 'blocked' };
@@ -13,31 +15,61 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 const numInput = 'h-9 w-full rounded-[10px] border border-line bg-surface px-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-leaf/30';
 const today = () => new Date().toISOString().slice(0, 10);
 
-function BomModal({ open, onClose, products, editing }) {
+function BomModal({ open, onClose, products, units = [], editing }) {
   const queryClient = useQueryClient();
+  const [outputMode, setOutputMode] = useState('existing');
   const [form, setForm] = useState({ product_id: '', name: '', output_qty: '1', is_active: true, notes: '' });
+  const [newProduct, setNewProduct] = useState({ sku: '', name: '', unit_id: '' });
   const [items, setItems] = useState([{ component_product_id: '', qty: '' }]);
   const [errors, setErrors] = useState({});
   const [applied, setApplied] = useState(null);
 
   if (open && editing && applied !== editing.id) {
+    setOutputMode('existing');
     setForm({ product_id: editing.product_id, name: editing.name, output_qty: String(editing.output_qty), is_active: editing.is_active, notes: editing.notes ?? '' });
+    setNewProduct({ sku: '', name: '', unit_id: '' });
     setItems(editing.items?.length ? editing.items.map((i) => ({ component_product_id: i.component_product_id, qty: String(i.qty) })) : [{ component_product_id: '', qty: '' }]);
     setApplied(editing.id);
   }
-  if (open && !editing && applied !== 'new') { setForm({ product_id: '', name: '', output_qty: '1', is_active: true, notes: '' }); setItems([{ component_product_id: '', qty: '' }]); setApplied('new'); }
+  if (open && !editing && applied !== 'new') {
+    setOutputMode('existing');
+    setForm({ product_id: '', name: '', output_qty: '1', is_active: true, notes: '' });
+    setNewProduct({ sku: '', name: '', unit_id: '' });
+    setItems([{ component_product_id: '', qty: '' }]);
+    setApplied('new');
+  }
 
   const saveM = useMutation({
     mutationFn: () => {
-      const payload = { ...form, output_qty: Number(form.output_qty) || 1, items: items.filter((i) => i.component_product_id).map((i) => ({ component_product_id: i.component_product_id, qty: Number(i.qty) || 0 })) };
+      const payload = {
+        ...form,
+        output_qty: Number(form.output_qty) || 1,
+        items: items.filter((i) => i.component_product_id).map((i) => ({ component_product_id: i.component_product_id, qty: Number(i.qty) || 0 })),
+      };
+      if (outputMode === 'new') {
+        delete payload.product_id;
+        payload.new_product = {
+          sku: newProduct.sku.trim(),
+          name: newProduct.name.trim(),
+          unit_id: newProduct.unit_id || null,
+        };
+      } else {
+        delete payload.new_product;
+      }
       return editing ? api.put(`/production/boms/${editing.id}`, payload) : api.post('/production/boms', payload);
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['boms'] }); queryClient.invalidateQueries({ queryKey: ['production-form-data'] }); handleClose(); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boms'] });
+      queryClient.invalidateQueries({ queryKey: ['production-form-data'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      handleClose();
+    },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
 
   function handleClose() { setApplied(null); setErrors({}); onClose(); }
   const err = (k) => errors[k]?.[0];
+  const newErr = (k) => errors[`new_product.${k}`]?.[0];
   const setItem = (i, patch) => setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
 
   return (
@@ -47,13 +79,55 @@ function BomModal({ open, onClose, products, editing }) {
         <Button size="sm" disabled={saveM.isPending} onClick={() => saveM.mutate()}>{saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Save'}</Button>
       </>}
     >
+      <div className="mb-4">
+        <p className="microlabel mb-2 text-faint">Output product</p>
+        {!editing && (
+          <div className="mb-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOutputMode('existing')}
+              className={'rounded-xl px-3 py-1.5 text-sm transition-colors ' + (outputMode === 'existing' ? 'bg-leaf text-white' : 'bg-surface text-muted ring-1 ring-line hover:text-ink')}
+            >
+              Existing product
+            </button>
+            <button
+              type="button"
+              onClick={() => setOutputMode('new')}
+              className={'rounded-xl px-3 py-1.5 text-sm transition-colors ' + (outputMode === 'new' ? 'bg-leaf text-white' : 'bg-surface text-muted ring-1 ring-line hover:text-ink')}
+            >
+              Create new product
+            </button>
+          </div>
+        )}
+        {outputMode === 'existing' || editing ? (
+          <Field label="Select product" required error={err('product_id')}>
+            <select value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))} className={selectCls}>
+              <option value="">Select…</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` · ${p.sku}` : ''}</option>)}
+            </select>
+          </Field>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="SKU" required error={newErr('sku')}>
+              <Input value={newProduct.sku} onChange={(e) => setNewProduct((p) => ({ ...p, sku: e.target.value }))} placeholder="PLT-ROSE-M" />
+            </Field>
+            <Field label="Product name" required error={newErr('name')}>
+              <Input value={newProduct.name} onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))} placeholder="Potted Rose (Medium)" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Unit" error={newErr('unit_id')}>
+                <select value={newProduct.unit_id} onChange={(e) => setNewProduct((p) => ({ ...p, unit_id: e.target.value }))} className={selectCls}>
+                  <option value="">— Optional —</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.name}{u.short_name ? ` (${u.short_name})` : ''}</option>)}
+                </select>
+              </Field>
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted">A new product master record is created and linked to this recipe. Stock is added when you complete a production order.</p>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Output product" required error={err('product_id')}>
-          <select value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))} className={selectCls}>
-            <option value="">Select…</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </Field>
         <Field label="Recipe name" required error={err('name')}><Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Potted Rose (Medium)" /></Field>
         <Field label="Yields (output units)" required error={err('output_qty')}><Input type="number" step="0.001" value={form.output_qty} onChange={(e) => setForm((f) => ({ ...f, output_qty: e.target.value }))} /></Field>
         <Field label="Status">
@@ -157,6 +231,7 @@ function OrderModal({ open, onClose, boms, supervisors = [], editing }) {
 
 export default function ProductionList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('orders');
@@ -164,20 +239,21 @@ export default function ProductionList() {
   const [editingBom, setEditingBom] = useState(null);
   const [orderModal, setOrderModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [orderStatus, setOrderStatus] = useState('');
 
   const { data: formData } = useQuery({
-    queryKey: ['production-form-data', activeCompany?.id],
-    queryFn: () => api.get('/production/form-data').then((r) => r.data.data),
+    queryKey: ['production-form-data', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/production/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
   const ordersQ = useQuery({
-    queryKey: ['production-orders', activeCompany?.id],
-    queryFn: () => api.get('/production/orders').then((r) => r.data),
+    queryKey: ['production-orders', activeCompany?.id, filterCompanyId, orderStatus],
+    queryFn: () => api.get('/production/orders', { params: { ...companyParams, status: orderStatus || undefined, per_page: 100 } }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'orders',
   });
   const bomsQ = useQuery({
-    queryKey: ['boms', activeCompany?.id],
-    queryFn: () => api.get('/production/boms').then((r) => r.data),
+    queryKey: ['boms', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/production/boms', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'boms',
   });
   const deleteBomM = useMutation({
@@ -186,20 +262,37 @@ export default function ProductionList() {
   });
 
   const products = formData?.products ?? [];
+  const units = formData?.units ?? [];
   const boms = formData?.boms ?? [];
   const supervisors = formData?.supervisors ?? [];
   const orders = ordersQ.data?.data ?? [];
   const bomRows = bomsQ.data?.data ?? [];
+
+  function exportOrders() {
+    if (orders.length === 0) return;
+    downloadCsv('production-orders', orders.map((o) => ({
+      'Order No': o.order_no,
+      'Date': o.order_date,
+      'Output product': o.output_product,
+      'Quantity': o.output_quantity,
+      'Unit cost': o.status === 'completed' ? o.output_unit_cost : '',
+      'Total input cost': o.status === 'completed' ? o.total_input_cost : '',
+      'Status': o.status,
+    })));
+  }
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Production</h1>
-          <p className="text-sm text-muted">Raise finished plants from input materials. Completing an order consumes inputs and yields stock.</p>
+          <p className="text-sm text-muted">Raise finished plants from input materials. Completing an order consumes inputs and yields stock{companyHint}.</p>
         </div>
-        {tab === 'orders' && can('production.create') && <Button size="sm" onClick={() => { setEditingOrder(null); setOrderModal(true); }} disabled={boms.length === 0}><PlusIcon className="size-4" /> New order</Button>}
-        {tab === 'boms' && can('production.manage_bom') && <Button size="sm" onClick={() => { setEditingBom(null); setBomModal(true); }}><PlusIcon className="size-4" /> New BOM</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {tab === 'orders' && can('production.create') && <Button size="sm" onClick={() => { setEditingOrder(null); setOrderModal(true); }} disabled={boms.length === 0}><PlusIcon className="size-4" /> New order</Button>}
+          {tab === 'boms' && can('production.manage_bom') && <Button size="sm" onClick={() => { setEditingBom(null); setBomModal(true); }}><PlusIcon className="size-4" /> New BOM</Button>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">
@@ -212,7 +305,26 @@ export default function ProductionList() {
       </div>
 
       {tab === 'orders' && (
-        <Card className="overflow-hidden">
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={orderStatus}
+              onChange={(e) => setOrderStatus(e.target.value)}
+              className="h-9 rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25"
+            >
+              <option value="">All statuses</option>
+              <option value="draft">Draft</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <span className="text-xs text-muted">{orders.length} order{orders.length === 1 ? '' : 's'}</span>
+            <div className="ml-auto">
+              <Button variant="outline" size="sm" onClick={exportOrders} disabled={orders.length === 0}>
+                <ArrowDownTrayIcon className="size-4" /> Export CSV
+              </Button>
+            </div>
+          </div>
+          <Card className="overflow-hidden">
           {ordersQ.isLoading ? <div className="flex justify-center py-16"><Spinner className="size-6" /></div>
             : orders.length === 0 ? <div className="px-4 py-16 text-center"><p className="text-sm font-medium">No production orders</p><p className="mt-1 text-sm text-muted">{boms.length === 0 ? 'Create a bill of materials first.' : 'Create one to raise finished stock.'}</p></div>
             : (
@@ -248,6 +360,7 @@ export default function ProductionList() {
               </table>
             )}
         </Card>
+        </>
       )}
 
       {tab === 'boms' && (
@@ -286,7 +399,7 @@ export default function ProductionList() {
         </Card>
       )}
 
-      <BomModal open={bomModal} onClose={() => { setBomModal(false); setEditingBom(null); }} products={products} editing={editingBom} />
+      <BomModal open={bomModal} onClose={() => { setBomModal(false); setEditingBom(null); }} products={products} units={units} editing={editingBom} />
       <OrderModal open={orderModal} onClose={() => { setOrderModal(false); setEditingOrder(null); }} boms={boms} supervisors={supervisors} editing={editingOrder} />
     </div>
   );

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PencilSquareIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { useToast } from '../../lib/toast';
 import { useConfirm } from '../../lib/confirm';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
@@ -15,6 +16,7 @@ const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 tex
 
 export default function UsersList() {
   const { activeCompany, can, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -26,14 +28,14 @@ export default function UsersList() {
   const [pickedCompany, setPickedCompany] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['users', activeCompany?.id, page],
-    queryFn: () => api.get('/users', { params: { page, per_page: 25 } }).then((r) => r.data),
+    queryKey: ['users', activeCompany?.id, filterCompanyId, page],
+    queryFn: () => api.get('/users', { params: { ...companyParams, page, per_page: 25 } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
   const { data: formData } = useQuery({
-    queryKey: ['users-form-data', activeCompany?.id],
-    queryFn: () => api.get('/users/form-data').then((r) => r.data.data),
+    queryKey: ['users-form-data', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/users/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
 
@@ -76,9 +78,12 @@ export default function UsersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Users &amp; roles</h1>
-          <p className="text-sm text-muted">Branch-level access for {activeCompany?.name}. Each user signs in with their own login.</p>
+          <p className="text-sm text-muted">Branch-level access. Each user signs in with their own login{companyHint}.</p>
         </div>
-        {can('users.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> Add user</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('users.create') && <Button size="sm" onClick={openNew}><PlusIcon className="size-4" /> Add user</Button>}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

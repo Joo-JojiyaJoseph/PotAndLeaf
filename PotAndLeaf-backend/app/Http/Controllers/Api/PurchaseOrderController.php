@@ -10,18 +10,19 @@ use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Services\PurchaseOrderService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseOrderController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly PurchaseOrderService $orders) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'po.view');
 
         return $this->ok(PurchaseOrderResource::collection($this->orders->list($company->id, $request->only(['search', 'status', 'per_page']))));

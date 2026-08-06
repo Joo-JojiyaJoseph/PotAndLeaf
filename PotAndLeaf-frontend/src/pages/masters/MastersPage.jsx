@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 
 const TABS = [
@@ -12,7 +13,7 @@ const TABS = [
 ];
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 
-function MasterModal({ open, onClose, tab, editing }) {
+function MasterModal({ open, onClose, tab, editing, filterCompanyId, companyParams }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: '', code: '', short_name: '', description: '', parent_id: '', status: 'active' });
   const [errors, setErrors] = useState({});
@@ -29,8 +30,8 @@ function MasterModal({ open, onClose, tab, editing }) {
 
   // parents for the category dropdown
   const parentsQ = useQuery({
-    queryKey: ['masters', 'categories', 'parents'],
-    queryFn: () => api.get('/masters/categories').then((r) => r.data.data),
+    queryKey: ['masters', 'categories', 'parents', filterCompanyId],
+    queryFn: () => api.get('/masters/categories', { params: companyParams }).then((r) => r.data.data),
     enabled: open && Boolean(tab.hasParent),
   });
 
@@ -82,6 +83,7 @@ function MasterModal({ open, onClose, tab, editing }) {
 
 export default function MastersPage() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [tabType, setTabType] = useState('categories');
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,8 +91,8 @@ export default function MastersPage() {
   const tab = TABS.find((t) => t.type === tabType);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['masters', tabType, activeCompany?.id],
-    queryFn: () => api.get(`/masters/${tabType}`).then((r) => r.data.data),
+    queryKey: ['masters', tabType, activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get(`/masters/${tabType}`, { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
   const deleteM = useMutation({
@@ -104,9 +106,12 @@ export default function MastersPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Product masters</h1>
-          <p className="text-sm text-muted">Manage the categories, brands and units your products use.</p>
+          <p className="text-sm text-muted">Manage the categories, brands and units your products use{companyHint}.</p>
         </div>
-        {can(`${tabType}.create`) && <Button size="sm" onClick={() => { setEditing(null); setModalOpen(true); }}><PlusIcon className="size-4" /> New {tab.singular}</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can(`${tabType}.create`) && <Button size="sm" onClick={() => { setEditing(null); setModalOpen(true); }}><PlusIcon className="size-4" /> New {tab.singular}</Button>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">
@@ -152,7 +157,7 @@ export default function MastersPage() {
           )}
       </Card>
 
-      <MasterModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} tab={tab} editing={editing} />
+      <MasterModal open={modalOpen} onClose={() => { setModalOpen(false); setEditing(null); }} tab={tab} editing={editing} filterCompanyId={filterCompanyId} companyParams={companyParams} />
     </div>
   );
 }

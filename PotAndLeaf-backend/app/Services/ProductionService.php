@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Actions\Products\CreateProduct;
 use App\Models\Bom;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\ProductionOrder;
+use App\Support\Barcode\BarcodeGenerator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +16,8 @@ class ProductionService
 {
     public function __construct(
         private readonly InventoryService $inventory,
+        private readonly BarcodeGenerator $barcodes,
+        private readonly CreateProduct $createProduct,
     ) {}
 
     // ---- Bill of Materials ----
@@ -27,10 +32,28 @@ class ProductionService
     public function upsertBom(int|string $companyId, array $data): Bom
     {
         return DB::transaction(function () use ($companyId, $data) {
+            $productId = $data['product_id'] ?? null;
+            if (! empty($data['new_product'])) {
+                $created = $this->createProduct->handle($companyId, [
+                    'sku'           => $data['new_product']['sku'],
+                    'name'          => $data['new_product']['name'],
+                    'unit_id'       => $data['new_product']['unit_id'] ?? null,
+                    'status'        => 'active',
+                    'opening_stock' => 0,
+                ]);
+                $productId = $created->id;
+            }
+
+            if (! $productId) {
+                throw ValidationException::withMessages([
+                    'product_id' => 'Select an output product or create a new one.',
+                ]);
+            }
+
             $bom = Bom::updateOrCreate(
                 ['id' => $data['id'] ?? null, 'company_id' => $companyId],
                 [
-                    'product_id' => $data['product_id'],
+                    'product_id' => $productId,
                     'name'       => $data['name'],
                     'output_qty' => $data['output_qty'] ?? 1,
                     'is_active'  => $data['is_active'] ?? true,
@@ -68,7 +91,7 @@ class ProductionService
     public function findOrder(int|string $companyId, string $id): ?ProductionOrder
     {
         return ProductionOrder::forCompany($companyId)
-            ->with(['items', 'outputProduct:id,sku,name', 'bom:id,name'])
+            ->with(['items', 'outputProduct:id,sku,name', 'bom:id,name', 'batches'])
             ->whereKey($id)->first();
     }
 
@@ -119,7 +142,7 @@ class ProductionService
         // retry after the first request already committed) returns the same order
         // as success instead of erroring.
         if ($order->isCompleted()) {
-            return $order->load(['items', 'outputProduct:id,sku,name', 'bom:id,name']);
+            return $order->load(['items', 'outputProduct:id,sku,name', 'bom:id,name', 'batches']);
         }
 
         if (! $order->isDraft()) {
@@ -174,10 +197,14 @@ class ProductionService
             $unitCost = $outQty > 0 ? round($inputCost / $outQty, 4) : 0.0;
             $output = Product::forCompany($order->company_id)->lockForUpdate()->find($order->output_product_id);
             if ($output) {
+                // Barcode the finished goods: one batch per production run.
+                $batch = $this->makeProductionBatch($order, $output, $outQty, $unitCost);
+
                 $this->inventory->post(
                     product: $output, direction: 'in', qty: $outQty, unitCost: $unitCost,
                     referenceType: 'production', referenceId: $order->id,
                     note: "Production {$order->order_no}", userId: $userId,
+                    productBatchId: $batch?->id,
                 );
                 $output->cost_price = $unitCost;
                 $output->save();
@@ -191,8 +218,31 @@ class ProductionService
                 'completed_at'           => now(),
             ]);
 
-            return $order->refresh()->load(['items', 'outputProduct:id,sku,name', 'bom:id,name']);
+            return $order->refresh()->load(['items', 'outputProduct:id,sku,name', 'bom:id,name', 'batches']);
         });
+    }
+
+    /** Mint a barcoded finished-goods batch for a completed production run. */
+    private function makeProductionBatch(ProductionOrder $order, Product $output, float $qty, float $unitCost): ?ProductBatch
+    {
+        $existing = ProductBatch::where('production_order_id', $order->id)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        return ProductBatch::create([
+            'company_id'          => $order->company_id,
+            'product_id'          => $output->id,
+            'production_order_id' => $order->id,
+            'location_id'         => $order->location_id,
+            'batch_no'            => $order->order_no,
+            'barcode'             => $this->barcodes->forProduction($order->company_id, $order->order_no),
+            'qty'                 => $qty,
+            'remaining_qty'       => $qty,
+            'cost_price'          => $unitCost,
+            'status'              => 'active',
+            'received_at'         => now(),
+        ]);
     }
 
     public function cancel(ProductionOrder $order, ?int $userId = null): ProductionOrder

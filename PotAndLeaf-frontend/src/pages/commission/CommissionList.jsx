@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -196,6 +197,7 @@ function PayoutModal({ open, onClose, staff }) {
 
 export default function CommissionList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('payouts');
   const [ruleModal, setRuleModal] = useState(false);
@@ -203,23 +205,23 @@ export default function CommissionList() {
   const [payoutModal, setPayoutModal] = useState(false);
 
   const { data: formData } = useQuery({
-    queryKey: ['commission-form-data', activeCompany?.id],
-    queryFn: () => api.get('/commission/form-data').then((r) => r.data.data),
+    queryKey: ['commission-form-data', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/commission/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: Boolean(activeCompany),
   });
   const rulesQ = useQuery({
-    queryKey: ['commission-rules', activeCompany?.id],
-    queryFn: () => api.get('/commission/rules').then((r) => r.data),
+    queryKey: ['commission-rules', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/commission/rules', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'rules',
   });
   const payoutsQ = useQuery({
-    queryKey: ['commission-payouts', activeCompany?.id],
-    queryFn: () => api.get('/commission/payouts').then((r) => r.data),
+    queryKey: ['commission-payouts', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/commission/payouts', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'payouts',
   });
   const supervisorQ = useQuery({
-    queryKey: ['commission-supervisor-entries', activeCompany?.id],
-    queryFn: () => api.get('/commission/supervisor-entries').then((r) => r.data),
+    queryKey: ['commission-supervisor-entries', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/commission/supervisor-entries', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'supervisor',
   });
   const delM = useMutation({
@@ -237,10 +239,13 @@ export default function CommissionList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Commission</h1>
-          <p className="text-sm text-muted">Sales commission plus supervisor accruals on produced stock (sale or transfer, once).</p>
+          <p className="text-sm text-muted">Sales commission plus supervisor accruals on produced stock (sale or transfer, once){companyHint}.</p>
         </div>
-        {tab === 'rules' && can('commission.manage') && <Button size="sm" onClick={() => { setEditingRule(null); setRuleModal(true); }}><PlusIcon className="size-4" /> Set rule</Button>}
-        {tab === 'payouts' && can('commission.pay') && <Button size="sm" onClick={() => setPayoutModal(true)}><PlusIcon className="size-4" /> Record payout</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {tab === 'rules' && can('commission.manage') && <Button size="sm" onClick={() => { setEditingRule(null); setRuleModal(true); }}><PlusIcon className="size-4" /> Set rule</Button>}
+          {tab === 'payouts' && can('commission.pay') && <Button size="sm" onClick={() => setPayoutModal(true)}><PlusIcon className="size-4" /> Record payout</Button>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

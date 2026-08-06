@@ -37,6 +37,11 @@ class ProductionOrder extends Model
         return $this->hasMany(ProductionOrderItem::class);
     }
 
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
     public function outputProduct(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'output_product_id');

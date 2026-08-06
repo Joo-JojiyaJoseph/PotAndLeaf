@@ -10,18 +10,19 @@ use App\Models\Product;
 use App\Models\StockVerification;
 use App\Services\StockVerificationService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StockVerificationController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly StockVerificationService $verifications) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'stock_verifications.view');
 
         return $this->ok(StockVerificationResource::collection(

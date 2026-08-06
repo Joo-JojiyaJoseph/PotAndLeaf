@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -15,12 +16,13 @@ const tone = { draft: 'inactive', sent: 'submitted', received: 'active', cancell
 
 export default function PurchaseOrdersList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['purchase-orders', activeCompany?.id, status],
-    queryFn: () => api.get('/purchase-orders', { params: { status } }).then((r) => r.data),
+    queryKey: ['purchase-orders', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/purchase-orders', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -31,9 +33,12 @@ export default function PurchaseOrdersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Purchase orders</h1>
-          <p className="text-sm text-muted">Raise orders to suppliers, then convert them to GRNs on receipt.</p>
+          <p className="text-sm text-muted">Raise orders to suppliers, then convert them to GRNs on receipt{companyHint}.</p>
         </div>
-        {can('po.create') && <Link to="/purchase-orders/new"><Button size="sm"><PlusIcon className="size-4" /> New PO</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('po.create') && <Link to="/purchase-orders/new"><Button size="sm"><PlusIcon className="size-4" /> New PO</Button></Link>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

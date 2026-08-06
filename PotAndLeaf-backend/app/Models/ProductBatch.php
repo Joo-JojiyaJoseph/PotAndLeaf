@@ -17,7 +17,7 @@ class ProductBatch extends Model
     use HasUuids;
 
     protected $fillable = [
-        'company_id', 'product_id', 'purchase_id', 'purchase_item_id', 'supplier_id',
+        'company_id', 'product_id', 'purchase_id', 'purchase_item_id', 'production_order_id', 'supplier_id',
         'location_id', 'batch_no', 'barcode', 'qty', 'remaining_qty', 'cost_price',
         'status', 'received_at',
     ];
@@ -40,6 +40,11 @@ class ProductBatch extends Model
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    public function productionOrder(): BelongsTo
+    {
+        return $this->belongsTo(ProductionOrder::class);
     }
 
     public function purchaseItem(): BelongsTo

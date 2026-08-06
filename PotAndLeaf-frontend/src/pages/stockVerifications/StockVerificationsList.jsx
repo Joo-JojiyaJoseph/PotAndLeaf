@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon, XCircleIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { formatDate } from '../../lib/format';
 
@@ -17,6 +18,7 @@ const STATUS_TABS = [
 
 export default function StockVerificationsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
@@ -29,8 +31,8 @@ export default function StockVerificationsList() {
   };
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['stock-verifications', activeCompany?.id, status],
-    queryFn: () => api.get('/stock-verifications', { params: { status } }).then((r) => r.data),
+    queryKey: ['stock-verifications', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/stock-verifications', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -53,30 +55,35 @@ export default function StockVerificationsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Stock verification</h1>
-          <p className="text-sm text-muted">Physical counts. HO approval adjusts system stock to the counted figures.</p>
+          <p className="text-sm text-muted">Physical counts. HO approval adjusts system stock to the counted figures{companyHint}.</p>
         </div>
-        {can('stock_verifications.create') && (
-          <Link to="/stock-verifications/new">
-            <Button size="sm">
-              <PlusIcon className="size-4" /> New count
-            </Button>
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('stock_verifications.create') && (
+            <Link to="/stock-verifications/new">
+              <Button size="sm">
+                <PlusIcon className="size-4" /> New count
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
-      <div className="flex gap-1 border-b border-line">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setStatus(tab.value)}
-            className={
-              'border-b-2 px-3 py-2 text-sm transition-colors ' +
-              (status === tab.value ? 'border-leaf font-medium text-leaf' : 'border-transparent text-muted hover:text-ink')
-            }
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line">
+        <div className="flex gap-1">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatus(tab.value)}
+              className={
+                'border-b-2 px-3 py-2 text-sm transition-colors ' +
+                (status === tab.value ? 'border-leaf font-medium text-leaf' : 'border-transparent text-muted hover:text-ink')
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

@@ -30,6 +30,14 @@ class BarcodeGenerator
         return sprintf('PL%s-%s-%02d', $companyId, substr($safe, -10), $lineNo);
     }
 
+    /** Unique barcode for a finished-goods batch from a production order. */
+    public function forProduction(int|string $companyId, string $orderNo): string
+    {
+        $safe = preg_replace('/[^A-Z0-9]/', '', strtoupper($orderNo)) ?: 'PRD';
+
+        return sprintf('PL%s-%s', $companyId, substr($safe, -12));
+    }
+
     /** Unique barcode for an individual saleable unit after a bulk split. */
     public function forSplitUnit(int|string $companyId, string $splitNo, int $unitNo): string
     {

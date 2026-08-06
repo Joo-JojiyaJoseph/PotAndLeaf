@@ -11,19 +11,20 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Services\SaleService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly SaleService $sales) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
-        $this->allow($request, 'sales.view');
+        $company = $this->filterCompany($request);
+        abort_unless($request->user()->hasPermission('sales.view', $company->id), 403);
 
         return $this->ok(SaleResource::collection($this->sales->list($company->id, $request->only(['search', 'status', 'per_page']))));
     }

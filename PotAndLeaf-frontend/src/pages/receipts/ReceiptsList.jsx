@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -11,20 +12,20 @@ const statusTone = { paid: 'active', partial: 'warning', unpaid: 'blocked' };
 const selectCls = 'h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:outline-none focus:ring-2 focus:ring-leaf/25';
 const today = () => new Date().toISOString().slice(0, 10);
 
-function RecordReceiptModal({ open, onClose, prefill }) {
+function RecordReceiptModal({ open, onClose, prefill, filterCompanyId, companyParams }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ customer_id: '', sale_id: '', amount: '', mode: 'cash', receipt_date: today(), reference: '', notes: '' });
   const [errors, setErrors] = useState({});
   const [applied, setApplied] = useState(null);
 
   const { data: formData } = useQuery({
-    queryKey: ['receipt-form-data'],
-    queryFn: () => api.get('/customer-receipts/form-data').then((r) => r.data.data),
+    queryKey: ['receipt-form-data', filterCompanyId],
+    queryFn: () => api.get('/customer-receipts/form-data', { params: companyParams }).then((r) => r.data.data),
     enabled: open,
   });
   const { data: receivables } = useQuery({
-    queryKey: ['receivables', 'modal', form.customer_id],
-    queryFn: () => api.get('/customer-receipts/receivables', { params: { customer_id: form.customer_id } }).then((r) => r.data.data.receivables),
+    queryKey: ['receivables', 'modal', filterCompanyId, form.customer_id],
+    queryFn: () => api.get('/customer-receipts/receivables', { params: { ...companyParams, customer_id: form.customer_id } }).then((r) => r.data.data.receivables),
     enabled: open && Boolean(form.customer_id),
   });
 
@@ -93,19 +94,20 @@ function RecordReceiptModal({ open, onClose, prefill }) {
 
 export default function ReceiptsList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState('receivables');
   const [modal, setModal] = useState(false);
   const [prefill, setPrefill] = useState(null);
 
   const receivablesQ = useQuery({
-    queryKey: ['receivables', activeCompany?.id, 'all'],
-    queryFn: () => api.get('/customer-receipts/receivables').then((r) => r.data.data.receivables),
+    queryKey: ['receivables', activeCompany?.id, filterCompanyId, 'all'],
+    queryFn: () => api.get('/customer-receipts/receivables', { params: companyParams }).then((r) => r.data.data.receivables),
     enabled: Boolean(activeCompany) && tab === 'receivables',
   });
   const historyQ = useQuery({
-    queryKey: ['customer-receipts', activeCompany?.id],
-    queryFn: () => api.get('/customer-receipts').then((r) => r.data),
+    queryKey: ['customer-receipts', activeCompany?.id, filterCompanyId],
+    queryFn: () => api.get('/customer-receipts', { params: companyParams }).then((r) => r.data),
     enabled: Boolean(activeCompany) && tab === 'history',
   });
   const voidM = useMutation({
@@ -122,9 +124,12 @@ export default function ReceiptsList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Customer receipts</h1>
-          <p className="text-sm text-muted">Track credit sales outstanding and record collections.</p>
+          <p className="text-sm text-muted">Track credit sales outstanding and record collections{companyHint}.</p>
         </div>
-        {can('receipts.create') && <Button size="sm" onClick={() => openRecord(null)}><PlusIcon className="size-4" /> Record receipt</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('receipts.create') && <Button size="sm" onClick={() => openRecord(null)}><PlusIcon className="size-4" /> Record receipt</Button>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">
@@ -206,7 +211,7 @@ export default function ReceiptsList() {
         </Card>
       )}
 
-      <RecordReceiptModal open={modal} onClose={() => { setModal(false); setPrefill(null); }} prefill={prefill} />
+      <RecordReceiptModal open={modal} onClose={() => { setModal(false); setPrefill(null); }} prefill={prefill} filterCompanyId={filterCompanyId} companyParams={companyParams} />
     </div>
   );
 }

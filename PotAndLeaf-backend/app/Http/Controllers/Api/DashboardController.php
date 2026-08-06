@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,11 +17,11 @@ use Illuminate\Http\Request;
  */
 class DashboardController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function index(Request $request): JsonResponse
     {
-        $company = $request->attributes->get('company');
+        $company = $this->listCompany($request);
         $companyId = $company->id;
 
         $lowStock = Product::query()->forCompany($companyId)

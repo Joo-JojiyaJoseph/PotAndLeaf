@@ -11,18 +11,19 @@ use App\Models\Product;
 use App\Models\StockTransfer;
 use App\Services\TransferService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TransferController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly TransferService $transfers) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'transfers.view');
 
         return $this->ok(StockTransferResource::collection($this->transfers->list($company->id, $request->only(['search', 'status', 'per_page']))));

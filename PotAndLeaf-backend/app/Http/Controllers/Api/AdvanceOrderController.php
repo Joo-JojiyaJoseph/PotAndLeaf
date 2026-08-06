@@ -10,18 +10,19 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Services\AdvanceOrderService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdvanceOrderController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly AdvanceOrderService $orders) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'advance.view');
 
         return $this->ok(AdvanceOrderResource::collection($this->orders->list($company->id, $request->only(['search', 'status', 'per_page']))));

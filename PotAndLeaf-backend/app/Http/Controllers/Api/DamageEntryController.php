@@ -9,19 +9,20 @@ use App\Models\Location;
 use App\Models\Product;
 use App\Services\DamageEntryService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DamageEntryController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly DamageEntryService $damage) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
-        $this->allow($request, 'damage.view');
+        $company = $this->filterCompany($request);
+        abort_unless($request->user()->hasPermission('damage.view', $company->id), 403);
 
         return $this->ok(DamageEntryResource::collection(
             $this->damage->list($company->id, $request->only(['product_id', 'location_id', 'from', 'to', 'per_page']))

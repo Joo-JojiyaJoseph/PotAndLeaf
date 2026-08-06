@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import CompanyFilter, { companyFilterParam, filteredCompanyLabel } from '../../components/CompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -15,14 +16,16 @@ const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked
 const payTone = { cash: 'default', card: 'info', upi: 'info', credit: 'warning' };
 
 export default function SalesList() {
-  const { activeCompany, can } = useAuth();
+  const { activeCompany, can, companies, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
+  const [filterCompanyId, setFilterCompanyId] = useState('');
+  const companyParams = companyFilterParam(filterCompanyId);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['sales', activeCompany?.id, status],
-    queryFn: () => api.get('/sales', { params: { status } }).then((r) => r.data),
+    queryKey: ['sales', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/sales', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -37,9 +40,14 @@ export default function SalesList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Sales</h1>
-          <p className="text-sm text-muted">POS invoices. Confirming posts stock out and updates the customer.</p>
+          <p className="text-sm text-muted">
+            POS invoices{isSuperAdmin ? ` · ${filteredCompanyLabel(companies, filterCompanyId, activeCompany)}` : ''}. Confirming posts stock out and updates the customer.
+          </p>
         </div>
-        {can('sales.create') && <Link to="/sales/new"><Button size="sm"><PlusIcon className="size-4" /> New sale</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          <CompanyFilter value={filterCompanyId} onChange={setFilterCompanyId} />
+          {can('sales.create') && <Link to="/sales/new"><Button size="sm"><PlusIcon className="size-4" /> New sale</Button></Link>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

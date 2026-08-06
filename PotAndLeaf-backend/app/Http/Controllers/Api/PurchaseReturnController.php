@@ -10,12 +10,13 @@ use App\Models\PurchaseReturn;
 use App\Repositories\Contracts\PurchaseReturnRepositoryInterface;
 use App\Services\PurchaseReturnService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseReturnController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(
         private readonly PurchaseReturnService $returns,
@@ -24,7 +25,7 @@ class PurchaseReturnController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'purchase_returns.view');
 
         $filters = $request->only(['search', 'status', 'per_page']);

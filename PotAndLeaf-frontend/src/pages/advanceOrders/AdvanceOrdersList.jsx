@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatCurrency, formatDate } from '../../lib/format';
 
@@ -15,12 +16,13 @@ const tone = { booked: 'submitted', fulfilled: 'active', cancelled: 'blocked' };
 
 export default function AdvanceOrdersList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['advance-orders', activeCompany?.id, status],
-    queryFn: () => api.get('/advance-orders', { params: { status } }).then((r) => r.data),
+    queryKey: ['advance-orders', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/advance-orders', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -31,9 +33,12 @@ export default function AdvanceOrdersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Advance orders</h1>
-          <p className="text-sm text-muted">Customer pre-bookings against future stock. Fulfil to raise a sale.</p>
+          <p className="text-sm text-muted">Customer pre-bookings against future stock. Fulfil to raise a sale{companyHint}.</p>
         </div>
-        {can('advance.create') && <Link to="/advance-orders/new"><Button size="sm"><PlusIcon className="size-4" /> New booking</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('advance.create') && <Link to="/advance-orders/new"><Button size="sm"><PlusIcon className="size-4" /> New booking</Button></Link>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

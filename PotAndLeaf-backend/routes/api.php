@@ -242,7 +242,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('inventory/stock', [InventoryController::class, 'stock']);
         Route::get('inventory/alerts', [InventoryController::class, 'alerts']);
+        Route::get('inventory/ledger/form-data', [InventoryController::class, 'ledgerFormData']);
         Route::get('inventory/ledger', [InventoryController::class, 'ledger']);
+        Route::get('inventory/ledger/export', [InventoryController::class, 'exportLedger']);
         Route::get('inventory/valuation', [InventoryController::class, 'valuation']);
         Route::get('inventory/movement', [InventoryController::class, 'movement']);
 

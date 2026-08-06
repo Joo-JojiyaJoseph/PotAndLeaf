@@ -10,12 +10,13 @@ use App\Models\SalesReturn;
 use App\Repositories\Contracts\SalesReturnRepositoryInterface;
 use App\Services\SalesReturnService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SalesReturnController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(
         private readonly SalesReturnService $returns,
@@ -24,7 +25,7 @@ class SalesReturnController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'sales_returns.view');
 
         return $this->ok(SalesReturnResource::collection(

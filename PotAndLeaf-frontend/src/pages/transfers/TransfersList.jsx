@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import { formatDate } from '../../lib/format';
 
@@ -15,12 +16,13 @@ const tone = { draft: 'inactive', in_transit: 'warning', received: 'active', can
 
 export default function TransfersList() {
   const { activeCompany, can } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['transfers', activeCompany?.id, status],
-    queryFn: () => api.get('/transfers', { params: { status } }).then((r) => r.data),
+    queryKey: ['transfers', activeCompany?.id, filterCompanyId, status],
+    queryFn: () => api.get('/transfers', { params: { ...companyParams, status } }).then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
   });
@@ -31,9 +33,12 @@ export default function TransfersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Stock transfers</h1>
-          <p className="text-sm text-muted">Move stock between companies. Dispatch from source; receive at destination (matched by SKU).</p>
+          <p className="text-sm text-muted">Move stock between companies. Dispatch from source; receive at destination (matched by SKU){companyHint}.</p>
         </div>
-        {can('transfers.create') && <Link to="/transfers/new"><Button size="sm"><PlusIcon className="size-4" /> New transfer</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('transfers.create') && <Link to="/transfers/new"><Button size="sm"><PlusIcon className="size-4" /> New transfer</Button></Link>}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-line">

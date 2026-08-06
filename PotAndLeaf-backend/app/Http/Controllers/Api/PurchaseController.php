@@ -11,19 +11,20 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Services\PurchaseService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly PurchaseService $purchases) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
-        $this->allow($request, 'purchases.view');
+        $company = $this->filterCompany($request);
+        abort_unless($request->user()->hasPermission('purchases.view', $company->id), 403);
 
         $filters = $request->only(['search', 'status', 'supplier_id', 'per_page']);
 

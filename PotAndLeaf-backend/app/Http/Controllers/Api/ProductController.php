@@ -13,18 +13,19 @@ use App\Models\ProductUnit;
 use App\Models\Supplier;
 use App\Services\ProductService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly ProductService $products) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'products.view');
 
         $products = Product::query()
@@ -44,7 +45,7 @@ class ProductController extends Controller
     /** Lookups the product form needs: categories, brands, units, tax rates. */
     public function formData(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'products.view');
 
         $map = fn ($rows) => $rows->map(fn ($r) => ['id' => $r->id, 'name' => $r->name] + (isset($r->short_name) ? ['short_name' => $r->short_name] : []));

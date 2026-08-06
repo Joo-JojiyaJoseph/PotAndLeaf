@@ -7,6 +7,7 @@ use App\Models\ProductBrand;
 use App\Models\ProductCategory;
 use App\Models\ProductUnit;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,7 @@ use Illuminate\Validation\Rule;
  */
 class MasterDataController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     private const TYPES = [
         'categories' => [ProductCategory::class, 'categories', ['name', 'code', 'description', 'parent_id', 'status'], true],
@@ -28,7 +29,7 @@ class MasterDataController extends Controller
     public function index(Request $request, string $type): JsonResponse
     {
         [$model, $perm, , $hasParent] = $this->resolve($type);
-        $companyId = $this->companyId($request);
+        $companyId = $this->listCompany($request)->id;
         $this->allow($request, "{$perm}.view", $companyId);
 
         $rows = $model::where('company_id', $companyId)->orderBy('name')->get();

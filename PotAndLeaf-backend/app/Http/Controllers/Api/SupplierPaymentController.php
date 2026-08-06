@@ -9,18 +9,19 @@ use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Services\PaymentService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\ResolvesFilterCompany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SupplierPaymentController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, ResolvesFilterCompany;
 
     public function __construct(private readonly PaymentService $payments) {}
 
     public function index(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'payments.view');
 
         return $this->ok(SupplierPaymentResource::collection(
@@ -31,7 +32,7 @@ class SupplierPaymentController extends Controller
     /** Suppliers (with outstanding) for the record-payment form. */
     public function formData(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'payments.create');
 
         $suppliers = Supplier::forCompany($company->id)->orderBy('name')
@@ -44,7 +45,7 @@ class SupplierPaymentController extends Controller
     /** Confirmed purchases with paid / balance / due-date / status. */
     public function payables(Request $request): JsonResponse
     {
-        $company = $this->company($request);
+        $company = $this->listCompany($request);
         $this->allow($request, 'payments.view');
 
         return $this->ok(['payables' => $this->payments->payables($company->id, $request->query('supplier_id'))]);

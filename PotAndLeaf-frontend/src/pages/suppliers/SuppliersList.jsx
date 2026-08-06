@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import useCompanyFilter from '../../hooks/useCompanyFilter';
 import { Badge, Button, Card, Field, Input, Modal, Spinner } from '../../components/ui';
 import { ImageUpload, mediaUrl } from '../../components/media';
 import { useToast } from '../../lib/toast';
@@ -50,6 +51,7 @@ const selectClass =
 
 export default function SuppliersList() {
   const { activeCompany, can, isSuperAdmin, companies, companyId, selectCompany } = useAuth();
+  const { filterCompanyId, companyParams, companyHint, Filter } = useCompanyFilter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -65,10 +67,10 @@ export default function SuppliersList() {
   const [pickedCompany, setPickedCompany] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['suppliers', activeCompany?.id, debounced, page],
+    queryKey: ['suppliers', activeCompany?.id, filterCompanyId, debounced, page],
     queryFn: () =>
       api
-        .get('/suppliers', { params: { search: debounced, page, per_page: 15 } })
+        .get('/suppliers', { params: { ...companyParams, search: debounced, page, per_page: 15 } })
         .then((r) => r.data),
     enabled: Boolean(activeCompany),
     keepPreviousData: true,
@@ -154,13 +156,16 @@ export default function SuppliersList() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Suppliers</h1>
-          <p className="text-sm text-muted">Vendor master — GST, terms and outstanding balances.</p>
+          <p className="text-sm text-muted">Vendor master — GST, terms and outstanding balances{companyHint}.</p>
         </div>
-        {can('suppliers.create') && (
-          <Button size="sm" onClick={openCreate}>
-            <PlusIcon className="size-4" /> New supplier
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter />
+          {can('suppliers.create') && (
+            <Button size="sm" onClick={openCreate}>
+              <PlusIcon className="size-4" /> New supplier
+            </Button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={submitSearch} className="relative max-w-md">
