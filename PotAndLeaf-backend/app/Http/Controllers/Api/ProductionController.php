@@ -108,6 +108,14 @@ class ProductionController extends Controller
         return $this->ok(new ProductionOrderResource($productionOrder->load(['items', 'outputProduct:id,sku,name', 'bom:id,name'])));
     }
 
+    public function updateOrder(StoreProductionOrderRequest $request, ProductionOrder $productionOrder): JsonResponse
+    {
+        $this->sameCompany($request, $productionOrder);
+        $updated = $this->production->updateOrder($productionOrder, $request->validated());
+
+        return $this->ok(new ProductionOrderResource($updated), 'Production order updated.');
+    }
+
     public function complete(Request $request, ProductionOrder $productionOrder): JsonResponse
     {
         $this->allow($request, 'production.complete');

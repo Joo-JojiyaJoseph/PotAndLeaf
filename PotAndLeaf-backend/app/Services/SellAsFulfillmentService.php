@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Support\Barcode\BarcodeGenerator;
@@ -27,21 +28,21 @@ class SellAsFulfillmentService
         private readonly BarcodeGenerator $barcodes,
     ) {}
 
-    public function fulfil(Purchase $purchase, PurchaseItem $item, Product $purchasedProduct, ?int $userId): void
+    public function fulfil(Purchase $purchase, PurchaseItem $item, Product $purchasedProduct, ?int $userId, int $lineNo = 1): void
     {
         $qty = (float) $item->qty;
         $unitsPerSet = (float) ($item->units_per_set ?: 1);
         $note = "Purchase {$purchase->purchase_no}";
 
         match ($item->sell_as) {
-            'set_only'   => $this->stockSetOnly($item, $purchasedProduct, $qty, $purchase, $note, $userId),
-            'split_only' => $this->stockSplitOnly($item, $purchasedProduct, $qty, $unitsPerSet, $purchase, $note, $userId),
-            'both'       => $this->stockShared($item, $purchasedProduct, $qty, $unitsPerSet, $purchase, $note, $userId),
+            'set_only'   => $this->stockSetOnly($item, $purchasedProduct, $qty, $purchase, $note, $userId, $lineNo),
+            'split_only' => $this->stockSplitOnly($item, $purchasedProduct, $qty, $unitsPerSet, $purchase, $note, $userId, $lineNo),
+            'both'       => $this->stockShared($item, $purchasedProduct, $qty, $unitsPerSet, $purchase, $note, $userId, $lineNo),
             default      => null,
         };
     }
 
-    private function stockSetOnly(PurchaseItem $item, Product $purchasedProduct, float $qty, Purchase $purchase, string $note, ?int $userId): void
+    private function stockSetOnly(PurchaseItem $item, Product $purchasedProduct, float $qty, Purchase $purchase, string $note, ?int $userId, int $lineNo): void
     {
         $set = $item->set_product_id
             ? $this->lockedProduct($purchasedProduct->company_id, $item->set_product_id)
@@ -55,9 +56,11 @@ class SellAsFulfillmentService
         $set->save();
 
         $item->set_product_id = $set->id;
+
+        $this->makeBatch($purchase, $item, $set, $qty, (float) $item->landed_unit_cost, $lineNo);
     }
 
-    private function stockSplitOnly(PurchaseItem $item, Product $purchasedProduct, float $qty, float $unitsPerSet, Purchase $purchase, string $note, ?int $userId): void
+    private function stockSplitOnly(PurchaseItem $item, Product $purchasedProduct, float $qty, float $unitsPerSet, Purchase $purchase, string $note, ?int $userId, int $lineNo): void
     {
         $split = $this->resolveSplitProduct($item, $purchasedProduct);
         $totalUnits = round($qty * $unitsPerSet, 3);
@@ -72,9 +75,11 @@ class SellAsFulfillmentService
         $split->save();
 
         $item->split_product_id = $split->id;
+
+        $this->makeBatch($purchase, $item, $split, $totalUnits, $unitCost, $lineNo);
     }
 
-    private function stockShared(PurchaseItem $item, Product $purchasedProduct, float $qty, float $unitsPerSet, Purchase $purchase, string $note, ?int $userId): void
+    private function stockShared(PurchaseItem $item, Product $purchasedProduct, float $qty, float $unitsPerSet, Purchase $purchase, string $note, ?int $userId, int $lineNo): void
     {
         $set = $item->set_product_id
             ? $this->lockedProduct($purchasedProduct->company_id, $item->set_product_id)
@@ -107,6 +112,37 @@ class SellAsFulfillmentService
         $item->set_product_id = $set->id;
         $item->split_product_id = $unit->id;
         $item->shared_pool_group = $poolGroupId;
+
+        $this->makeBatch($purchase, $item, $unit, $totalUnits, $unitCost, $lineNo);
+    }
+
+    /**
+     * Mint a barcoded batch for a split product stocked from a bulk line, so
+     * each split product is labelled batch-wise like a normal purchase line and
+     * shows up in the purchase's printable batch barcodes. Skip-if-exists keeps
+     * it idempotent across re-runs.
+     */
+    private function makeBatch(Purchase $purchase, PurchaseItem $item, Product $product, float $qty, float $unitCost, int $lineNo): void
+    {
+        if (ProductBatch::where('purchase_item_id', $item->id)->exists()) {
+            return;
+        }
+
+        ProductBatch::create([
+            'company_id'       => $purchase->company_id,
+            'product_id'       => $product->id,
+            'purchase_id'      => $purchase->id,
+            'purchase_item_id' => $item->id,
+            'supplier_id'      => $purchase->supplier_id,
+            'location_id'      => $purchase->location_id,
+            'batch_no'         => sprintf('%s-%02d', $purchase->purchase_no, $lineNo),
+            'barcode'          => $this->barcodes->forBatch($purchase->company_id, $purchase->purchase_no, $lineNo),
+            'qty'              => $qty,
+            'remaining_qty'    => $qty,
+            'cost_price'       => $unitCost,
+            'status'           => 'active',
+            'received_at'      => now(),
+        ]);
     }
 
     private function resolveSplitProduct(PurchaseItem $item, Product $purchasedProduct): Product

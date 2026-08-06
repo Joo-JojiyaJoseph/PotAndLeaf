@@ -29,6 +29,12 @@ class ConfirmBulkSplit
 
     public function handle(BulkSplit $split, ?int $userId = null): BulkSplit
     {
+        // Idempotent: a repeat confirm returns the confirmed split as success
+        // rather than erroring, so double-clicks/retries don't fail.
+        if ($split->status === 'confirmed') {
+            return $split->load(['items.units', 'sourceProduct:id,sku,name']);
+        }
+
         if (! $split->isDraft()) {
             throw ValidationException::withMessages(['status' => 'Only draft splits can be confirmed.']);
         }

@@ -80,28 +80,56 @@ function BomModal({ open, onClose, products, editing }) {
   );
 }
 
-function OrderModal({ open, onClose, boms, supervisors = [] }) {
+function OrderModal({ open, onClose, boms, supervisors = [], editing }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({ bom_id: '', output_quantity: '', supervisor_id: '', order_date: today(), notes: '' });
   const [errors, setErrors] = useState({});
+  const [applied, setApplied] = useState(null);
+
+  if (open && editing && applied !== editing.id) {
+    setForm({
+      bom_id: editing.bom_id ?? '',
+      output_quantity: String(editing.output_quantity ?? ''),
+      supervisor_id: editing.supervisor_id ? String(editing.supervisor_id) : '',
+      order_date: editing.order_date ?? today(),
+      notes: editing.notes ?? '',
+    });
+    setApplied(editing.id);
+  }
+  if (open && !editing && applied !== 'new') {
+    setForm({ bom_id: '', output_quantity: '', supervisor_id: '', order_date: today(), notes: '' });
+    setApplied('new');
+  }
 
   const saveM = useMutation({
-    mutationFn: () => api.post('/production/orders', {
-      bom_id: form.bom_id, output_quantity: Number(form.output_quantity) || 0,
-      supervisor_id: form.supervisor_id ? Number(form.supervisor_id) : null,
-      order_date: form.order_date, notes: form.notes || null,
-    }),
-    onSuccess: (res) => { handleClose(); navigate(`/production/orders/${res.data.data.id}`); },
+    mutationFn: () => {
+      const payload = {
+        bom_id: form.bom_id, output_quantity: Number(form.output_quantity) || 0,
+        supervisor_id: form.supervisor_id ? Number(form.supervisor_id) : null,
+        order_date: form.order_date, notes: form.notes || null,
+      };
+      return editing ? api.put(`/production/orders/${editing.id}`, payload) : api.post('/production/orders', payload);
+    },
+    onSuccess: (res) => {
+      if (editing) {
+        queryClient.invalidateQueries({ queryKey: ['production-orders'] });
+        handleClose();
+      } else {
+        handleClose();
+        navigate(`/production/orders/${res.data.data.id}`);
+      }
+    },
     onError: (err) => setErrors(err.response?.data?.errors ?? {}),
   });
-  function handleClose() { setForm({ bom_id: '', output_quantity: '', supervisor_id: '', order_date: today(), notes: '' }); setErrors({}); onClose(); }
+  function handleClose() { setApplied(null); setErrors({}); onClose(); }
   const err = (k) => errors[k]?.[0];
 
   return (
-    <Modal open={open} onClose={handleClose} title="New production order"
+    <Modal open={open} onClose={handleClose} title={editing ? `Edit ${editing.order_no}` : 'New production order'}
       footer={<>
         <Button variant="ghost" size="sm" onClick={handleClose}>Cancel</Button>
-        <Button size="sm" disabled={saveM.isPending} onClick={() => saveM.mutate()}>{saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : 'Create'}</Button>
+        <Button size="sm" disabled={saveM.isPending} onClick={() => saveM.mutate()}>{saveM.isPending ? <Spinner className="border-white/40 border-t-white" /> : (editing ? 'Save changes' : 'Create')}</Button>
       </>}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -135,6 +163,7 @@ export default function ProductionList() {
   const [bomModal, setBomModal] = useState(false);
   const [editingBom, setEditingBom] = useState(null);
   const [orderModal, setOrderModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   const { data: formData } = useQuery({
     queryKey: ['production-form-data', activeCompany?.id],
@@ -169,7 +198,7 @@ export default function ProductionList() {
           <h1 className="text-lg font-semibold">Production</h1>
           <p className="text-sm text-muted">Raise finished plants from input materials. Completing an order consumes inputs and yields stock.</p>
         </div>
-        {tab === 'orders' && can('production.create') && <Button size="sm" onClick={() => setOrderModal(true)} disabled={boms.length === 0}><PlusIcon className="size-4" /> New order</Button>}
+        {tab === 'orders' && can('production.create') && <Button size="sm" onClick={() => { setEditingOrder(null); setOrderModal(true); }} disabled={boms.length === 0}><PlusIcon className="size-4" /> New order</Button>}
         {tab === 'boms' && can('production.manage_bom') && <Button size="sm" onClick={() => { setEditingBom(null); setBomModal(true); }}><PlusIcon className="size-4" /> New BOM</Button>}
       </div>
 
@@ -195,6 +224,7 @@ export default function ProductionList() {
                   <th className="microlabel px-4 py-2.5 text-right font-semibold">Qty</th>
                   <th className="microlabel px-4 py-2.5 text-right font-semibold">Unit cost</th>
                   <th className="microlabel px-4 py-2.5 font-semibold">Status</th>
+                  <th className="microlabel px-4 py-2.5 font-semibold"></th>
                 </tr></thead>
                 <tbody>
                   {orders.map((o) => (
@@ -205,6 +235,13 @@ export default function ProductionList() {
                       <td className="tnum px-4 py-2.5 text-right">{o.output_quantity}</td>
                       <td className="tnum px-4 py-2.5 text-right text-muted">{o.status === 'completed' ? formatCurrency(o.output_unit_cost) : '—'}</td>
                       <td className="px-4 py-2.5"><Badge tone={statusTone[o.status] ?? 'default'}>{o.status}</Badge></td>
+                      <td className="px-4 py-2.5 text-right">
+                        {o.can?.update && (
+                          <button onClick={() => { setEditingOrder(o); setOrderModal(true); }} title="Edit order" className="rounded-lg p-1.5 text-muted hover:bg-paper hover:text-ink">
+                            <PencilSquareIcon className="size-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -250,7 +287,7 @@ export default function ProductionList() {
       )}
 
       <BomModal open={bomModal} onClose={() => { setBomModal(false); setEditingBom(null); }} products={products} editing={editingBom} />
-      <OrderModal open={orderModal} onClose={() => setOrderModal(false)} boms={boms} supervisors={supervisors} />
+      <OrderModal open={orderModal} onClose={() => { setOrderModal(false); setEditingOrder(null); }} boms={boms} supervisors={supervisors} editing={editingOrder} />
     </div>
   );
 }

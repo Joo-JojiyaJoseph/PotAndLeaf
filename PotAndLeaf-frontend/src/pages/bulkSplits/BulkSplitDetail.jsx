@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import api from '../../lib/api';
-import { Badge, Button } from '../../components/ui';
+import { Badge, Button, Card } from '../../components/ui';
 import { DetailHeader, Section, InfoGrid, InfoItem, DetailLoading, DetailError } from '../../components/detail';
 import { formatCurrency, formatDate } from '../../lib/format';
+import { Barcode, printBarcodeLabel } from '../../components/Barcode';
+import { printBarcodeSheet } from '../../lib/barcodeSheet';
 
 const statusTone = { draft: 'inactive', confirmed: 'active', cancelled: 'blocked' };
 
@@ -26,6 +28,11 @@ export default function BulkSplitDetail() {
   if (isLoading) return <DetailLoading />;
   if (isError || !data) return <DetailError backTo="/bulk-splits" />;
   const s = data;
+
+  const itemsWithUnits = (s.items ?? []).filter((it) => (it.units?.length ?? 0) > 0);
+  const labelsFor = (it) => (it.units ?? []).map((u) => ({ name: it.product_name, barcode: u.barcode, price: it.retail_price }));
+  const printProduct = (it) => { const l = labelsFor(it); if (l.length) printBarcodeSheet(l); };
+  const printAll = () => { const l = itemsWithUnits.flatMap(labelsFor); if (l.length) printBarcodeSheet(l); };
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
@@ -78,6 +85,45 @@ export default function BulkSplitDetail() {
           </table>
         </div>
       </Section>
+
+      {s.status === 'confirmed' && itemsWithUnits.length > 0 && (
+        <Section
+          title="Unit barcodes"
+          actions={<Button variant="outline" size="sm" onClick={printAll}><PrinterIcon className="size-4" /> Print all labels</Button>}
+        >
+          <div className="space-y-6">
+            {itemsWithUnits.map((it) => (
+              <div key={it.id}>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="font-medium text-ink">
+                    {it.product_name}
+                    <span className="ml-1 text-xs text-muted">· {it.units.length} unit{it.units.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => printProduct(it)}>
+                    <PrinterIcon className="size-4" /> Print {it.units.length} label{it.units.length > 1 ? 's' : ''}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {it.units.slice(0, 12).map((u) => (
+                    <Card key={u.id} className="flex flex-col items-center gap-2 p-3">
+                      <div className="rounded-lg bg-white p-2"><Barcode value={u.barcode} height={40} /></div>
+                      <button
+                        onClick={() => printBarcodeLabel({ barcode: u.barcode, name: it.product_name, price: it.retail_price })}
+                        className="text-xs font-medium text-leaf-hover hover:underline"
+                      >
+                        Print
+                      </button>
+                    </Card>
+                  ))}
+                </div>
+                {it.units.length > 12 && (
+                  <p className="mt-2 text-xs text-muted">Showing 12 of {it.units.length}. Use “Print {it.units.length} labels” for the full set.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

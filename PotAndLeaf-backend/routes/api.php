@@ -222,6 +222,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('production/orders', [ProductionController::class, 'orders']);
         Route::post('production/orders', [ProductionController::class, 'storeOrder']);
         Route::get('production/orders/{productionOrder}', [ProductionController::class, 'showOrder']);
+        Route::put('production/orders/{productionOrder}', [ProductionController::class, 'updateOrder']);
         Route::post('production/orders/{productionOrder}/complete', [ProductionController::class, 'complete']);
         Route::delete('production/orders/{productionOrder}', [ProductionController::class, 'destroyOrder']);
 

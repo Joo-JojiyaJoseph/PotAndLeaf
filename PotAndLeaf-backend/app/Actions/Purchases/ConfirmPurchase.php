@@ -32,6 +32,13 @@ class ConfirmPurchase
 
     public function handle(Purchase $purchase, ?int $userId = null): Purchase
     {
+        // Idempotent: a repeat confirm (double-click or retry after the first
+        // request already posted stock) returns the confirmed purchase as
+        // success instead of erroring.
+        if ($purchase->status === 'confirmed') {
+            return $purchase->load(['supplier', 'items', 'createdBy:id,name']);
+        }
+
         if (! $purchase->isDraft()) {
             throw ValidationException::withMessages([
                 'status' => 'Only draft purchases can be confirmed.',
@@ -58,11 +65,10 @@ class ConfirmPurchase
 
                 if ($item->is_bulk && $item->sell_as) {
                     // Delegates entirely — the set/unit product(s) it stocks may
-                    // differ from the purchased line's own product, so the normal
-                    // location adjustment below (keyed on $product) doesn't apply.
-                    // Bulk lines carry unit-level barcodes from the split, so we
-                    // don't also mint a batch barcode here.
-                    $this->sellAs->fulfil($purchase, $item, $product, $userId);
+                    // differ from the purchased line's own product. The split
+                    // products each get their own batch barcode inside fulfil().
+                    $lineNo++;
+                    $this->sellAs->fulfil($purchase, $item, $product, $userId, $lineNo);
                     $item->save();
                     continue;
                 }
@@ -111,6 +117,13 @@ class ConfirmPurchase
     /** Mint a barcoded batch for one stocked purchase line. */
     private function makeBatch(Purchase $purchase, $item, Product $product, int $lineNo): ProductBatch
     {
+        // If a batch already exists for this line, reuse it instead of creating a
+        // duplicate (skip-if-exists) so the barcode is stable across re-runs.
+        $existing = ProductBatch::where('purchase_item_id', $item->id)->first();
+        if ($existing) {
+            return $existing;
+        }
+
         $qty = (float) $item->qty;
 
         return ProductBatch::create([

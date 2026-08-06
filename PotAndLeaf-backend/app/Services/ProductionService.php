@@ -92,9 +92,36 @@ class ProductionService
         return $order->load(['outputProduct:id,sku,name', 'bom:id,name']);
     }
 
-    /** Consume inputs, produce output at derived unit cost. */
+    /** Edit a draft order (recipe, quantity, date, supervisor, notes). */
+    public function updateOrder(ProductionOrder $order, array $data): ProductionOrder
+    {
+        if (! $order->isDraft()) {
+            throw ValidationException::withMessages(['status' => 'Only draft orders can be edited.']);
+        }
+
+        $bom = Bom::forCompany($order->company_id)->findOrFail($data['bom_id']);
+
+        $order->update([
+            'bom_id'            => $bom->id,
+            'output_product_id' => $bom->product_id,
+            'location_id'       => $data['location_id'] ?? null,
+            'supervisor_id'     => $data['supervisor_id'] ?? null,
+            'order_date'        => $data['order_date'],
+            'output_quantity'   => $data['output_quantity'],
+            'notes'             => $data['notes'] ?? null,
+        ]);
+
+        return $order->load(['outputProduct:id,sku,name', 'bom:id,name']);
+    }
     public function complete(ProductionOrder $order, ?int $userId = null): ProductionOrder
     {
+        // Idempotent: if it's already completed, a repeat call (double-click or a
+        // retry after the first request already committed) returns the same order
+        // as success instead of erroring.
+        if ($order->isCompleted()) {
+            return $order->load(['items', 'outputProduct:id,sku,name', 'bom:id,name']);
+        }
+
         if (! $order->isDraft()) {
             throw ValidationException::withMessages(['status' => 'Only draft orders can be completed.']);
         }

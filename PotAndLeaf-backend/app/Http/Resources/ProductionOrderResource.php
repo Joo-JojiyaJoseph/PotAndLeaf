@@ -20,6 +20,7 @@ class ProductionOrderResource extends JsonResource
             'order_date'       => optional($this->order_date)->toDateString(),
             'output_product_id' => $this->output_product_id,
             'output_product'   => $this->outputProduct?->name,
+            'bom_id'           => $this->bom_id,
             'bom_name'         => $this->bom?->name,
             'output_quantity'  => (float) $this->output_quantity,
             'commission_pending_qty' => (float) ($this->commission_pending_qty ?? 0),
@@ -35,6 +36,7 @@ class ProductionOrderResource extends JsonResource
                 'qty' => (float) $i->qty, 'unit_cost' => (float) $i->unit_cost, 'line_cost' => (float) $i->line_cost,
             ])->values()),
             'can'              => [
+                'update'   => $this->status === 'draft' && $user?->hasPermission('production.create', $companyId),
                 'complete' => $this->status === 'draft' && $user?->hasPermission('production.complete', $companyId),
                 'cancel'   => in_array($this->status, ['draft', 'completed'], true) && $user?->hasPermission('production.delete', $companyId),
             ],
